@@ -393,9 +393,10 @@ def webCrawler(load, min_date, max_date, profile_path = "/data/firefox_cache"):
 
 
         pathlib.Path("/data/text").mkdir(parents=True, exist_ok=True)
-        pathlib.Path("/data/groupID").mkdir(parents=True, exist_ok=True)
+        pathlib.Path("/data/image").mkdir(parents=True, exist_ok=True)
         pathlib.Path("/data/audio").mkdir(parents=True, exist_ok=True)
         pathlib.Path("/data/video").mkdir(parents=True, exist_ok=True)
+        pathlib.Path("/data/groupID").mkdir(parents=True, exist_ok=True)
         pathlib.Path("/data/notifications").mkdir(parents=True, exist_ok=True)
 
         files = {}
@@ -407,7 +408,7 @@ def webCrawler(load, min_date, max_date, profile_path = "/data/firefox_cache"):
         # print('>>>>>>>>>>> Getting Groups Metadata')
         # #get_groups_metadata(driver)
         msg_id_path  = '/data/groupID/'
-        # messagesID   = get_load_messages(msg_id_path)
+        messagesID   = get_load_messages(msg_id_path)
         all_messages = list()
         file_name = "/data/AllMessages_" + today_date+ ".txt"  
         file_t = open(file_name, 'a') 
@@ -439,12 +440,24 @@ def webCrawler(load, min_date, max_date, profile_path = "/data/firefox_cache"):
             timestamp = gid.split('-')[-1]
             date = convert_data_from_timestamp(float(timestamp))
             str_date = date.strftime('%Y-%m-%d %H:%M:%S')
+            try: msgids = messagesID[gid]
+            except KeyError as e: 
+                messagesID[gid] = dict()
+                messagesID[gid]['messages'] = set()
+                messagesID[gid]['date'] = '2000-01-01'
             
             chat_print = "<Group chat - {name}: {id}, {participants} participants - at {time}!!>".format( name=s_name, id=gid,  participants=len(members), time=str_date)
             print('>>>>>Loading messages from', chat_print)
-        
-            start_date = min_date
-            till_date = datetime.datetime.strptime(start_date, date_format)
+
+            #PROCESS PREVIOUS LOADED MESSAGES ID AND LAST DATE    
+            if messagesID[gid]['date'] > max_date: continue
+            if messagesID[gid]['date'] > min_date:
+                start_date = messagesID[gid]['date']
+                #start_date = min_date
+                till_date = datetime.datetime.strptime(start_date, date_format)
+            else:
+                start_date = min_date
+                till_date = datetime.datetime.strptime(start_date, date_format)
             
 
             # LOAD MESSAGES FROM WHATSAPP SINCE MIN_DATE
@@ -468,14 +481,17 @@ def webCrawler(load, min_date, max_date, profile_path = "/data/firefox_cache"):
                 gid = msg[1].split('@')[0]
                 mid = msg[0]
                
-                
-                try:
-                    j = driver.get_message_by_id(mid)
-                except Exception as e:
-                    print('Error getting a message >>', e)
+                if mid.strip() in messagesID[gid]['messages']:
+                    print('Message: %d >>> %s from %s was CHECKED' %(count, mid, gid))
                     continue
-                if not j : continue
-                #print 'Message: ', count, gid, mid
+                else:
+                    try:
+                        j = driver.get_message_by_id(mid)
+                    except Exception as e:
+                        print('Error getting a message >>', e)
+                        continue
+                    if not j : continue
+                    #print 'Message: ', count, gid, mid
                 
                 #get_notification_type(message, gid)
                 try:    date = get_date_from_message(j)
@@ -534,7 +550,7 @@ if __name__ == '__main__':
                 min_date  = (sys.argv[1])
                 max_date = (sys.argv[2])
             except:
-                min_date = '2020-05-20'
+                min_date = '2020-05-26'
                 max_date = '2020-05-27'
             date_format = "%Y-%m-%d"
             till_date = datetime.datetime.strptime(min_date, date_format)
