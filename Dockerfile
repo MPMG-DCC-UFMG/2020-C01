@@ -11,7 +11,7 @@ COPY requirements.txt /app
 RUN pip install --trusted-host pypi.python.org -r requirements.txt
 
 #Install webwhatsappapi
-RUN pip install "git+https://github.com/matheusfebarbosa/WebWhatsapp-Wrapper.git@8347bbaac4985a15abd31894307258c6f45a3471"
+RUN pip install "git+https://github.com/matheusfebarbosa/WebWhatsapp-Wrapper.git@23f278a417bae382380970125da49bb91e5fa215"
 
 # COPY the source code
 COPY source /app
