@@ -79,3 +79,56 @@ Creio que essas mudanças não quebraram o funcionamento do coletor, mas creio q
 No geral, a unica grande mudança que fiz foi comentar a linha que pega os metadados dos grupos, pois não entendi o que ela precisava para funcionar.
 
 Também comentei ou removi algumas linhas que não estavam fazendo nada (no geral por conta do driver do selenium estar rodando no docker agora, e algumas coisas relacionadas a conversão de strings para unicode, que agora já são padrão unicode no python3).
+
+## Saídas
+
+É gerada uma pasta `data`, em que são armazenados os arquivos de saída da coleta. Dentro desta pasta, é gerado um log de erros (i.e. _log.txt_). Além disso, as demais informações são divididas em pastas, descritas abaixo:
+
+- audio: Armazena os áudios coletados. O nome dos arquivos é um identificador único gerado pelo Whatsapp
+
+- firefox*cache: Armazena o \_cache* do navegador utilizado para rodar a coleta
+
+- groupID: Nesta pasta, são armazenados arquivos .json, nomeados com o identificador único de um grupo. Dentro de um .json qualquer, estão todas as mensagens coletadas para o grupo identificado no nome do aruqivo. Cada linha é um objeto json distinto. Os campos contidos em cada json estão descritos abaixo:
+
+  - "message_id": Identificador único da mensagem
+  - "group_id": Identificador único do grupo onde a mensagem foi enviada
+  - "group_name": Nome do grupo onde a mensagem foi enviada
+  - "country": País de origem do número que enviou a mensagem,
+  - "sender": Número de telefone que enviou a mensagem,
+  - "date": Data e hora de envio da mensagem,
+  - "type": Tipo da mensagem, pode ser `text`, `image`, `ptt` **PENDENTE**, `sticker`, `video` ou `audio`.
+  - "file": Sinaliza se a mensagem vem acompanhada de algum arquivo, com o nome do arquivo armazenado. Caso não a mensagem não tenha um arquivo associado, este campo possui possui "<NoFile>" como valor.
+  - "content": Texto da mensagem
+  - "checksum": String gerado por checksum. Gerado apenas para mensagens de áudio, vídeo e imagem.
+  - "phash": [phash](https://phash.org) gerado apenas para imagens
+
+- image: Armazena as imagens coletadas. O nome dos arquivos é um identificador único gerado pelo Whatsapp
+
+- mids: Armazena, por grupo, arquivos que registram o id único de cada mensagem e o horário em que a mensagem foi enviada. Estes arquivos são utiliados para retomar a coleta da última mensagem coletada, para evitar duplicatas e acelerar a execução
+
+- notifications: Uma notificação é gerada quando um usuário entra/sai de um grupo, ou muda de nome. Nesta pasta, é armazenado, para grupo, um arquivo .json com as seguintes informações, para cada notificação do grupo:
+
+  - "message_id": identificador único da mensagem,
+  - "group_id": identificador único do grupo,
+  - "timestamp": [Unix time](https://en.wikipedia.org/wiki/Unix_time) de quando a notificação ocorreu,
+  - "date": Data e horário de quando a notificação ocorreu,
+  - "sender": **PENDENTE**,
+  - "type": **PENDENTE**,
+  - "subtype": **PENDENTE**,
+  - "contact_name": Nome do grupo onde ocorreu a notificação,
+  - "from": **PENDENTE**,
+  - "recipient": **PENDENTE**
+
+- text: Dentro desta pasta, são armazenados arquivos com todas as mensagems coletas, separadas por dia. Cada dia tem seu próprio arquivo, seguindo o padrão `AllMessages_YYYY_MM_DD.txt`. Dentro destes arquivos, cada linha é um objeto json que representa uma mensagem. Nestes objetos, estão armazenadas as seguintes informações:
+
+  - "message_id": Identificador único da mensagem
+  - "group_id": Identificador único do grupo onde a mensagem foi enviada
+  - "group_name": Nome do grupo onde a mensagem foi enviada
+  - "country": País de origem do número que enviou a mensagem,
+  - "sender": Número de telefone que enviou a mensagem,
+  - "date": Data e hora de envio da mensagem,
+  - "type": Tipo da mensagem, pode ser `text`, `image`, `ptt` **PENDENTE**, `sticker`, `video` ou `audio`.
+  - "file": Sinaliza se a mensagem vem acompanhada de algum arquivo, com o nome do arquivo armazenado. Caso não a mensagem não tenha um arquivo associado, este campo possui possui "<NoFile>" como valor.
+  - "content": Texto da mensagem
+
+- video: Armazena os vídeos coletados. O nome dos arquivos é um identificador único gerado pelo Whatsapp
