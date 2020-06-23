@@ -35,8 +35,56 @@ def convert_data_from_timestamp(time_message):
 
 
 class WhatsappCollector():
+    """
+    Classe que encapsula o coletor de grupos do Whatsapp. Possui
+    o método principal que realiza a leitura da entrada e faz a
+    coleta das mensagens, mídias e notificações.
 
+    Atributos
+    -----------
+    collection_mode : str
+            Modo de coleção a ser utilizado ("period" ou "unread" ou 
+            "continuous").
+    start_date : str
+            Data de início do período de coleta (Modo "period").
+    end_date : str
+            Data de término do período de coleta (Modo "period").
+    group_blacklist : list
+            Lista de ids de grupos que devem ser excluídos da coleta.
+    user_blacklist : list
+            Lista de ids de usuários que devem ser excluídos da coleta.
+    collect_messages : bool
+            Se mensagens de texto devem ser coletadas durante a execução.
+    collect_audios : bool
+            Se áudios devem ser coletadas durante a execução.
+    collect_videos : bool
+            Se vídeos devem ser coletadas durante a execução.
+    collect_images : bool
+            Se imagens devem ser coletadas durante a execução.
+    collect_notifications : bool
+            Se notificações devem ser coletadas durante a execução.
+    process_audio_hashes : bool
+            Se hashes de áudios devem ser calculados durante a execução.
+    process_image_hashes : bool
+            Se hashes de imagens devem ser calculados durante a execução.
+    process_video_hashes : bool
+            Se hashes de vídeos devem ser calculados durante a execução.
+
+
+    Métodos
+    -----------
+
+    """
     def __init__(self, args):
+        """
+        Inicializa o objeto
+
+        Parâmetros
+        ------------
+            args : argparse.Namespace()
+                Objeto com atributos que contém os argumentos de linha de
+                comando fornecidos.
+        """
         args_dict = vars(args)
 
         if args.json:
@@ -58,7 +106,16 @@ class WhatsappCollector():
         self.process_image_hashes  = args_dict["process_image_hashes"]
         self.process_video_hashes  = args_dict["process_video_hashes"]
 
-    def _process_content(self, string):
+    def _process_string(self, string):
+        """
+        Processa strings que irão pra saída do coletor, removendo quebras
+        de linha, tabulações e espaços extras.
+
+        Parâmetros
+        ------------
+            string : str
+                String a ser processada.
+        """
         string = string.strip()
         string = string.replace('\r', '')
         string = string.replace('\n', ' ')
@@ -67,37 +124,85 @@ class WhatsappCollector():
 
         return string
 
-    def _get_filename(self, message, filename):
+    def _generate_unique_filename(self, message, filename):
+        """
+        Gera um novo nome único para o arquivo de mídia contido na mensagem.
+
+        Parâmetros
+        ------------
+            message : webwhatsapi.Message()
+                Objeto de messagem que contem uma mídia.
+            filename : str
+                Nome original do arquivo.
+        """
         mediaID = message.id.split('.')[-1]
         filename = '%s_%s_%s.%s' % (message.type, filename.split('.')[0],
                                     mediaID, filename.split('.')[-1])
         return filename
 
-    def _get_image_from_message(self, message):
-        path = '/data/image/'
+    def _get_image_from_message(self, message, path='/data/image/'):
+        """
+        Baixa a imagem contida na mensagem coletada, caso ela exista.
+
+        Parâmetros
+        ------------
+            message : webwhatsapi.Message()
+                Objeto de messagem que contem uma imagem que pode ser baixada.
+            path : str
+                Caminho para a pasta onde o arquivo será salvo.
+        """
         if message.type == 'image':
-            filename = self._get_filename(message, message.filename)
+            filename = self._generate_unique_filename(
+                message, message.filename)
             message.filename = filename
             if not os.path.isfile(path+filename):
                 message.save_media(path, force_download=True)
 
-    def _get_video_from_message(self, message):
-        path = '/data/video/'
+    def _get_video_from_message(self, message, path='/data/video/'):
+        """
+        Baixa o vídeo contido na mensagem coletada, caso ele exista.
+
+        Parâmetros
+        ------------
+            message : webwhatsapi.Message()
+                Objeto de messagem que contem um vídeo que pode ser baixado.
+            path : str
+                Caminho para a pasta onde o arquivo será salvo.
+        """
         if message.type == 'video':
-            filename = self._get_filename(message, message.filename)
+            filename = self._generate_unique_filename(
+                message, message.filename)
             message.filename = filename
             if not os.path.isfile(path+filename):
                 message.save_media(path, force_download=True)
 
-    def _get_audio_from_message(self, message):
-        path = '/data/audio/'
+    def _get_audio_from_message(self, message, path='/data/audio/'):
+        """
+        Baixa o áudio contido na mensagem coletada, caso ele exista.
+
+        Parâmetros
+        ------------
+            message : webwhatsapi.Message()
+                Objeto de messagem que contem um áudio que pode ser baixado.
+            path : str
+                Caminho para a pasta onde o arquivo será salvo.
+        """
         if message.type == 'audio':
-            filename = self._get_filename(message, message.filename)
+            filename = self._generate_unique_filename(
+                message, message.filename)
             message.filename = filename
             if not os.path.isfile(path+filename):
                 message.save_media(path, force_download=True)
 
     def _get_date_from_message(self, message):
+        """
+        Retorna a data em que a mensagem foi enviada.
+
+        Parâmetros
+        ------------
+            message : webwhatsapi.Message()
+                Objeto de mensagem.
+        """
         t = str(message)
         index = t.find(' at ') + 4
         index2 = index + 10
@@ -105,12 +210,29 @@ class WhatsappCollector():
         return date
 
     def _get_group_from_message(self, message):
+        """
+        Retorna o nome do grupo em que a mensagem foi enviada.
+
+        Parâmetros
+        ------------
+            message : webwhatsapi.Message()
+                Objeto de mensagem.
+        """
         t = str(message)
         index = t.find('Group chat -') + 12
         group = t[index:].split(':')[0]
         return group
 
     def _get_load_notifications(self, path='/data/notifications/'):
+        """
+        Carrega e retorna um dicionário contendo os ids e datas das
+        notificações já coletadas.
+
+        Parâmetros
+        ------------
+            path : str
+                Caminho para pasta contendo arquivos de notificações.
+        """
         messagesIDs = dict()
         allfiles = [f for f in listdir(path) if isfile(join(path, f))]
         for f in allfiles:
@@ -125,6 +247,15 @@ class WhatsappCollector():
         return messagesIDs
 
     def _get_load_messages(self, path='/data/mids/'):
+        """
+        Carrega e retorna um dicionário contendo os ids e datas das
+        mensagens já coletadas.
+
+        Parâmetros
+        ------------
+            path : str
+                Caminho para pasta contendo arquivos de mensagens.
+        """
         messagesIDs = dict()
         allfiles = [f for f in listdir(path) if isfile(join(path, f))]
         for f in allfiles:
@@ -143,12 +274,35 @@ class WhatsappCollector():
         return messagesIDs
 
     def _is_notification(self, messageID):
+        """
+        Verifica se uma mensagem é do tipo notificação a partir do seu id.
+
+        Parâmetros
+        ------------
+            messageID : str
+                Id de uma mensagem coletada.
+        """
         if messageID.find('true') < 0:
             return False
         else:
             return True
 
     def _save_notification_(self, message, gid, path='/data/notifications/'):
+        """
+        Escreve em formato json a notificação contida na mensagem no arquivo
+        referente ao grupo em que ela foi enviada. Caso o arquivo do grupo
+        ainda não exista, ele será criado.
+
+        Parâmetros
+        ------------
+            message : webwhatsapi.Message()
+                Objeto da mensagem coletada.
+            gid : str
+                Id do grupo em que a mensagem foi enviada.
+            path : str
+                Caminho da pasta em que os arquivos de notificações serão
+                escritos.
+        """
         if(isinstance(message, NotificationMessage)):
             readable = {
                             'call_log': {
@@ -171,7 +325,7 @@ class WhatsappCollector():
             subtype = message._js_obj['subtype']
             timestamp = message._js_obj['timestamp']
             name = message._js_obj['chat']['contact']['name']
-            name = self._process_content(name)
+            name = self._process_string(name)
             date = datetime.datetime.fromtimestamp(int(timestamp)).strftime(
                 '%Y-%m-%d %H:%M:%S')
 
@@ -234,8 +388,29 @@ class WhatsappCollector():
 
             return notification
 
-    def _save_message(self, message, group_name, chatID, msg_id, file_name,
+    def _save_message(self, message, group_name, chat_id, msg_id, file_name,
                       msg_id_path='/data/groupID/'):
+        """
+        Escreve em formato json a mensagem coletada no arquivo
+        referente ao grupo em que ela foi enviada. Caso o arquivo do grupo
+        ainda não exista, ele será criado.
+
+        Parâmetros
+        ------------
+            message : webwhatsapi.Message()
+                Objeto da mensagem coletada.
+            group_name : str
+                Nome do grupo em que a mensagem foi enviada.
+            chat_id : str
+                Id do grupo em que a mensagem foi enviada.
+            msg_id : str
+                Id da mensagem coletada.
+            file_name : str
+                Nome do arquivo da mídia possivelmente contida na mensagem.
+            msg_id_path : str
+                Caminho da pasta em que os arquivos de mensagens por grupo
+                serão escritos.
+        """
 
         if not message.sender:
             return
@@ -254,7 +429,7 @@ class WhatsappCollector():
             country_code)
 
         mid = smart_str(msg_id)
-        gid = smart_str(chatID)
+        gid = smart_str(chat_id)
 
         try:
             content = message.content
@@ -275,7 +450,7 @@ class WhatsappCollector():
                 isinstance(message, MESSAGE.MMSMessage)):
             mediatype = smart_str(message.type)
             try:
-                filename = self._get_filename(message, message.filename)
+                filename = self._generate_unique_filename(message, message.filename)
                 content = '<'+filename+'>'
             except Exception:
                 filename = '<NoFile>'
@@ -330,7 +505,7 @@ class WhatsappCollector():
         messageLine = '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%r\t%s\t%s' % \
             (mid, gid, group_name, country, smart_str(sender),
              smart_str(date), mediatype, checksum, smart_str(filename),
-             self._process_content(content))
+             self._process_string(content))
         print(messageLine)
 
         # Save message on group ID file
@@ -351,8 +526,17 @@ class WhatsappCollector():
 
         return item
 
-        
     def run(self, profile_path="/data/firefox_cache"):
+        """
+        Faz a coleta das mensagens de grupos de Whatsapp de acordo
+        com os parâmetros fornecidos na criação do objeto de coleta.
+
+        Parâmetros
+        ------------
+            profile_path : str
+                Caminho para um profile alternativo do navegador
+                utilizado na coleta.
+        """
         if not os.path.exists(profile_path):
             os.makedirs(profile_path)
         driver = WhatsAPIDriver(loadstyles=True, profile=profile_path,
@@ -403,14 +587,15 @@ class WhatsappCollector():
             for chat in (all_chats):
                 gid = chat.id
                 gid = gid.split('@')[0]
-                s_name = self._process_content(chat.name)
-                
-                #Does not collect direct messages, only group chats
+                s_name = self._process_string(chat.name)
+
+                # Does not collect direct messages, only group chats
                 if not chat._js_obj['isGroup']:
                     continue
-                    
-                #Skip group if it is on blacklist (can be name or groupID)
-                if s_name in self.group_blacklist or gid in self.group_blacklist:
+
+                # Skip group if it is on blacklist (can be name or groupID)
+                if (s_name in self.group_blacklist or
+                        gid in self.group_blacklist):
                     continue
 
                 # PRINT CHAT INFORMATION
@@ -442,29 +627,25 @@ class WhatsappCollector():
                         start_date = min_date
                         till_date = datetime.datetime.strptime(start_date,
                                                                date_format)
-                    
+
                     # LOAD MESSAGES FROM WHATSAPP SINCE MIN_DATE
                     messages = chat.load_earlier_messages_till(till_date)
                     messages = driver.get_all_message_ids_in_chat(
-                    chat, include_notifications=include_notf)
+                        chat, include_notifications=include_notf)
 
-                    
                 elif self.collection_mode == 'period':
                     till_date = datetime.datetime.strptime(start_date,
-                                                               date_format)
+                                                           date_format)
                     # LOAD MESSAGES FROM WHATSAPP SINCE MIN_DATE
                     messages = chat.load_earlier_messages_till(till_date)
                     messages = driver.get_all_message_ids_in_chat(
-                    chat, include_notifications=include_notf)
+                        chat, include_notifications=include_notf)
 
                 elif self.collection_mode == 'unread':
                     # LOAD UNREAD MESSAGES FROM WHATSAPP
-                    messages = chat.get_unread_messages(self, include_me=False,
-                            include_notifications=include_notf)
+                    messages = chat.get_unread_messages(
+                        include_me=False, include_notifications=include_notf)
 
-
-
-                local_messages = list()
                 print('>>>>>Total messages %d' % (len(messages)))
                 count += 1
 
@@ -486,7 +667,7 @@ class WhatsappCollector():
                         print('Message: %d >>> %s from %s was CHECKED' %
                               (count, mid, gid))
                         continue
-                    
+
                     else:
                         try:
                             j = driver.get_message_by_id(mid)
@@ -495,14 +676,14 @@ class WhatsappCollector():
                             continue
                         if not j:
                             continue
-                    
-                    
+
                     sender = j.sender.id
                     sender = sender.replace(' ', '').strip()
                     sender = sender.split('@')[0]
-                    if sender in self.user_blacklist or '+'+sender in self.user_blacklist:
+                    if (sender in self.user_blacklist or
+                            '+'+sender in self.user_blacklist):
                         continue
-                        
+
                     try:
                         date = self._get_date_from_message(j)
                     except Exception:
@@ -512,12 +693,13 @@ class WhatsappCollector():
                         break
                     if (date < start_date):
                         continue
+
                     # Update day
                     if today_date != date:
                         today_date = date
                         file_name = "/data/text/AllMessages_" + today_date + \
                             ".txt"
-                    
+
                     if self.collect_images:
                         try:
                             self._get_image_from_message(j)
@@ -578,7 +760,6 @@ def main():
                         help="Se imagens devem ser coletadas durante a"
                         " execução.", default=True)
 
-
     parser.add_argument("--collect_notifications", type=bool,
                         help="Se as notificações devem ser coletadas durante a"
                         " execução.", default=True)
@@ -596,7 +777,7 @@ def main():
                         " a execução.", default=False)
 
     parser.add_argument("--group_blacklist", nargs="+",
-                        help="Lista de grupos que devem ser excluídos da"
+                        help="Lista de ids de grupos que devem ser excluídos da"
                         " coleta", default=[])
 
     parser.add_argument("--user_blacklist", nargs="+",
