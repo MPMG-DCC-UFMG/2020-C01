@@ -18,8 +18,6 @@ from pprint import pprint
 from os import listdir
 from os.path import isfile, join
 
-
-
 import phonenumbers
 from phonenumbers.phonenumberutil import (
     region_code_for_country_code,
@@ -51,7 +49,6 @@ def process_content(string):
     string = string.replace('\r','')
     string = string.replace('\n',' ')
     string = string.replace('\t',' ')
-    
     try : string = smart_str(string)
     except : string = 'NoName'
     return string
@@ -64,7 +61,6 @@ def get_filename(message, filename):
     return filename
 
 def get_messages_by_group(driver):
-
     msg_list = driver.get_unread(include_me=False, include_notifications=False, use_unread_count=False)
     return msg_list
 
@@ -128,7 +124,6 @@ def get_audio_from_message(message):
 
 
 
-
 def get_date_from_message(message):
     t = str(message)
     index = t.find(' at ') + 4
@@ -144,40 +139,9 @@ def get_group_from_message(message):
     index = t.find('Group chat -') + 12
     index2 = index + 10
     group = t[index:].split(':')[0]
-    
     return group
 
 
-
-def get_text_from_message(message, file_t, chatID, msg_id):
-        
-        user = smart_str(message.sender.id)
-        user = user.replace(' ', '').strip()
-        user = user.split('@')[0]
-        user = '+'+user
-        user =  hashlib.md5(user).hexdigest()
-        if hasattr(message, 'safe_content') and  not isinstance(message, MESSAGE.MediaMessage)  and not isinstance(message, MESSAGE.MMSMessage):
-            print(smart_str(message), file=file_t)
-            print(smart_str(msg_id), file=file_t) 
-            print(smart_str(chatID), file=file_t) 
-            print(smart_str(message.content), file=file_t)
-            print(smart_str(user), file=file_t)
-            return message.content
-        else:
-            try:
-                filename = get_filename(message, message.filename)
-                print(smart_str(message), file=file_t)
-                print(smart_str(msg_id), file=file_t)
-                print(smart_str(chatID), file=file_t)
-                print(filename, file=file_t)
-                print(smart_str(user), file=file_t)
-            except:  
-                print(smart_str(message), file=file_t)
-                print(smart_str(msg_id), file=file_t)               
-                print(smart_str(chatID), file=file_t)           
-                print('<NoFile>', file=file_t) 
-                print(smart_str(user), file=file_t)
-            return message
 
 
 def convert_data_to_timestamp(time_message):
@@ -190,7 +154,7 @@ def convert_data_from_timestamp(time_message):
     return time_obj
 
 
-def get_load_messages(path = '/data/groupID/'):
+def get_load_messages(path = '/data/mids/'):
     messagesIDs = dict()
     allfiles = [f for f in listdir(path) if isfile(join(path, f))]
     for f in allfiles:
@@ -201,70 +165,13 @@ def get_load_messages(path = '/data/groupID/'):
         with open(path+f, 'r') as fin:
             for line in fin:
                 tokens = line.strip().split('\t')
-                date = tokens[5].split(' ')[0]
+                date = tokens[2].split(' ')[0]
                 if date >= maxDate: maxDate = date
                 messagesIDs[ID]['messages'].add(tokens[0])
         messagesIDs[ID]['date'] = date
     return messagesIDs
     
     
-def get_groups_metadata(driver):
-    titles = dict()
-    with open('/data/titles.txt', 'r') as ft:
-        for line in ft.readlines():
-            try:
-                tks   = line.strip().split('\t')
-                link  = tks[0]
-                week  = tks[1]
-                title = smart_str(tks[2].strip())
-                if len(title) <= 2: continue
-                titles[title] = dict()
-                titles[title]['title'] = title
-                titles[title]['link']  = link
-                titles[title]['week']  = week
-            except : continue
-           
-    chats = driver.get_all_chats()
-    with open('/data/all_chats_id.txt', 'w') as fchat:
-        for chat in chats:
-            #try:
-                if not chat._js_obj['isGroup']: continue
-                _id = chat.id
-                creator = _id.split('-')[0]
-                creator = hashlib.md5(creator).hexdigest()
-                timestamp = _id.split('-')[-1].split('@')[0]
-                date = convert_data_from_timestamp(float(timestamp))
-                try: name = smart_str(chat.name.strip().replace('\t',' '))
-                except: name = str(_id)
-                
-                if name in list(titles.keys()): 
-                    print('>>>>>>>>>>>>>>>>>>>>>>>>>>',name)
-                try: 
-                    group = titles[name]
-                    title = titles[name]['title']
-                    link = titles[name]['link']
-                    week = titles[name]['week']
-                except:
-                    title = name
-                    link = 'LinkNotFound'
-                    week = 'WeekNotFound'
-                participants = driver.group_get_participants(_id)
-                plist = list()
-                clist = list()
-                for p in participants:
-                    pn = p.id.split('@')[0]
-                    try:    phone = phonenumbers.parse(pn)
-                    except: phone = phonenumbers.parse('+'+pn)
-                    country =  phone.country_code
-                    userID = hashlib.md5(pn).hexdigest() 
-                    plist.append(userID)
-                    clist.append(country)
-                final_string = "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s"%(link, week, _id, creator, timestamp, date, title, clist, plist)
-                print(smart_str(final_string))
-                print(smart_str(final_string), file=fchat)
-            #except:    continue
-
-
 def get_notification_type(message, gid):
     if(isinstance(message, NotificationMessage) ):
         #print 'NOTIFICATION', message
@@ -323,22 +230,19 @@ def get_notification_type(message, gid):
                 print(finalstring, file=fb)
 
 
-def save_message(message, group_name, msg_id_path, chatID, msg_id, file_t):
+def save_message(message, group_name, msg_id_path, chatID, msg_id, file_name):
         
-        #pprint(vars(message))
-        #print 'TYPE', type(message)
-        #print 'ATT', dir(message)
-        #print 'VARS', (vars(object))
         if not message.sender: return
+        item = dict()
         sender = message.sender.id
         sender = sender.replace(' ', '').strip()
         sender = sender.split('@')[0]
         sender = ('+'+sender)
-        #sender =  hashlib.md5(sender).hexdigest()
 
         try:    phone = phonenumbers.parse(sender)
         except: phone = phonenumbers.parse('+'+sender)
-        country =  phone.country_code
+        country_code =  phone.country_code
+        country =       region_code_for_country_code(country_code)
         
         mid = smart_str(msg_id)
         gid = smart_str(chatID)
@@ -369,13 +273,44 @@ def save_message(message, group_name, msg_id_path, chatID, msg_id, file_t):
             except: filename = '<NoFile>'
             if hasattr(message, 'caption'):
                 content = smart_str(message.caption)
-            
-    
-        with open(mid_filename, 'a') as fmid:
-            messageLine = '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%r\t%s\t%s' %(mid, gid, group_name, country, smart_str(sender), smart_str(date), mediatype, MediaMessage, smart_str(filename), process_content(content))
+                
+        phash    = '<PHASH>'    
+        checksum = '<CHECKSUM>'    
+        item['message_id']   = mid
+        item['group_id']     = gid
+        item['group_name']   = group_name
+        item['group_name']   = group_name
+        item['country']      = country
+        item['sender']       = smart_str(sender)
+        item['date']         = smart_str(date)
+        item['type']         = mediatype
+        item['file']         = smart_str(filename)
+        item['content']      = smart_str(content)
+        if mediatype == 'video' or mediatype == 'image' or mediatype =='audio':
+            item['checksum'] = checksum
+        if mediatype == 'image': 
+            item['phash'] = phash
+        
+        messageLine = '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%r\t%s\t%s' %(mid, gid, group_name, country, smart_str(sender), smart_str(date), mediatype, checksum, smart_str(filename), process_content(content))
+        print(messageLine)
+        
+        # Save message on group ID file
+        message_group_filename = 'data/groupID/%s.json'%(gid)
+        with open(message_group_filename, 'a') as json_file:
+            json.dump(item, json_file)
+            print('', file=json_file)
+        message_day_filename = file_name
+        # Save message on file for all messages of the day
+        with open(message_day_filename, 'a') as json_file:
+            json.dump(item, json_file)
+            print('', file=json_file)
+        reference_mid_filename = 'data/mids/%s.txt' %(gid)
+        #Save mid reference for future checks
+        with open(reference_mid_filename, 'a') as fmid:
+            messageLine = '%s\t%s\t%s' %(mid, gid, smart_str(date))
             print(messageLine, file=fmid)
-            print(messageLine, file=file_t)
-            print(messageLine)
+        
+        return item
             
             
 
@@ -398,6 +333,7 @@ def webCrawler(load, min_date, max_date, profile_path = "/data/firefox_cache"):
         pathlib.Path("/data/video").mkdir(parents=True, exist_ok=True)
         pathlib.Path("/data/groupID").mkdir(parents=True, exist_ok=True)
         pathlib.Path("/data/notifications").mkdir(parents=True, exist_ok=True)
+        pathlib.Path("/data/mids").mkdir(parents=True, exist_ok=True)
 
         files = {}
         today_date = datetime.date.today().strftime("%Y_%m_%d")
@@ -408,10 +344,11 @@ def webCrawler(load, min_date, max_date, profile_path = "/data/firefox_cache"):
         # print('>>>>>>>>>>> Getting Groups Metadata')
         # #get_groups_metadata(driver)
         msg_id_path  = '/data/groupID/'
-        messagesID   = get_load_messages(msg_id_path)
+        
+        print('>>>>>>>>>>> Loading previous collected Messages')
+        messagesID   = get_load_messages( )
         all_messages = list()
         file_name = "/data/AllMessages_" + today_date+ ".txt"  
-        file_t = open(file_name, 'a') 
         start_date = min_date
         
         reverse = True
@@ -425,7 +362,6 @@ def webCrawler(load, min_date, max_date, profile_path = "/data/firefox_cache"):
         
         print(' DONE! %d chats loaded!' %(len(all_chats)))
         random.shuffle(all_chats) 
-        #if reverse: chats = reversed(all_chats)
         
         for chat in (all_chats):
             #pprint(vars(chat)) 
@@ -446,7 +382,7 @@ def webCrawler(load, min_date, max_date, profile_path = "/data/firefox_cache"):
                 messagesID[gid]['messages'] = set()
                 messagesID[gid]['date'] = '2000-01-01'
             
-            chat_print = "<Group chat - {name}: {id}, {participants} participants - at {time}!!>".format( name=s_name, id=gid,  participants=len(members), time=str_date)
+            chat_print = "<Group chat - {name}: {id}, {participants} participants - at {time}!!>".format( name=s_name.encode('utf-8'), id=gid,  participants=len(members), time=str_date)
             print('>>>>>Loading messages from', chat_print)
 
             #PROCESS PREVIOUS LOADED MESSAGES ID AND LAST DATE    
@@ -463,8 +399,6 @@ def webCrawler(load, min_date, max_date, profile_path = "/data/firefox_cache"):
             # LOAD MESSAGES FROM WHATSAPP SINCE MIN_DATE
             #messages = chat.load_all_earlier_messages()
             messages = chat.load_earlier_messages_till(till_date)
-            #messages = chat.get_messages()
-            #messages = driver.get_all_messages_in_chat(chat)
             messages = driver.get_all_message_ids_in_chat(chat, include_notifications=True)
             
             local_messages = list()
@@ -493,7 +427,6 @@ def webCrawler(load, min_date, max_date, profile_path = "/data/firefox_cache"):
                     if not j : continue
                     #print 'Message: ', count, gid, mid
                 
-                #get_notification_type(message, gid)
                 try:    date = get_date_from_message(j)
                 except: continue
                 
@@ -501,35 +434,20 @@ def webCrawler(load, min_date, max_date, profile_path = "/data/firefox_cache"):
                 if date < start_date: continue
                 if today_date != date:  #update day
                         today_date = date
-                        file_t.close()
                         file_name = "/data/text/AllMessages_" + today_date+ ".txt"
-                        file_t = open(file_name, 'a')
-                #text = get_text_from_message(j, file_t, gid, mid)        
-                save_message(j, s_name, msg_id_path, gid, mid, file_t)
+                save_message(j, s_name, msg_id_path, gid, mid, file_name)
                 
                 
                 try:
-                    #signal.signal(signal.SIGALRM, timeout)    
-                    #signal.alarm(TIMEOUT)
                     get_image_from_message(j)
-                    #signal.signal(signal.SIGALRM, signal.SIG_IGN)
-                    #signal.alarm(0) 
                 except Exception as ei: print('!!!!Error getting image!!!! ', ei)
                     
                 try:
-                    #signal.signal(signal.SIGALRM, timeout)
-                    #signal.alarm(TIMEOUT)    
                     get_video_from_message(j)
-                    #signal.alarm(0)  
-                    #signal.signal(signal.SIGALRM, signal.SIG_IGN)
                 except Exception as ev: print('!!!!Error getting video!!!! ', ev)
                 
                 try:
-                    #signal.signal(signal.SIGALRM, timeout)
-                    #signal.alarm(TIMEOUT)
                     get_audio_from_message(j)
-                    #signal.alarm(0) 
-                    #signal.signal(signal.SIGALRM, signal.SIG_IGN)
                 except Exception as ea: print('!!!!Error getting audio!!!! ', ea)
         
         driver.close()
