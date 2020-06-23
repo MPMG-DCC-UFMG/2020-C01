@@ -16,6 +16,7 @@ services:
        - SELENIUM=http://firefox:4444/wd/hub
      volumes: 
        - "./data:/data"
+       - "./config:/config"
      working_dir: /app
      networks:
        - selenium
