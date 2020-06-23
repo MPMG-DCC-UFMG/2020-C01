@@ -7,6 +7,9 @@ WORKDIR /app
 # COPY requirements to /app dir
 COPY requirements.txt /app
 
+# Solve numpy dependency
+RUN python -mpip install numpy
+
 # Install any needed packages specified in base.txt
 RUN pip install --trusted-host pypi.python.org -r requirements.txt
 

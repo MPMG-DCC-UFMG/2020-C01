@@ -15,6 +15,7 @@ import pathlib
 import argparse
 import json
 import phonenumbers
+import hash_functions
 
 
 def smart_str(x):
@@ -175,12 +176,12 @@ class WhatsappCollector():
 
             try:
                 sender_user = message._js_obj['sender']['id']['user']
-            except:
+            except Exception:
                 sender_user = 'No_sender'
 
             try:
                 from_user = message._js_obj['from']['user']
-            except:
+            except Exception:
                 from_user = 'No_user'
 
             try:
@@ -203,7 +204,7 @@ class WhatsappCollector():
                 for item in message._js_obj['recipients']:
                     try:
                         recipient_user = item['user']
-                    except:
+                    except Exception:
                         recipient_user = 'No_user'
                     notification['recipient'] = recipient_user
                     finalstring = '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' % \
@@ -218,7 +219,7 @@ class WhatsappCollector():
             else:
                 try:
                     recipient_user = message._js_obj['recipients'][0]['user']
-                except:
+                except Exception:
                     recipient_user = 'No_user'
                 notification['recipient'] = recipient_user
                 finalstring = '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' % \
@@ -245,7 +246,7 @@ class WhatsappCollector():
 
         try:
             phone = phonenumbers.parse(sender)
-        except:
+        except Exception:
             phone = phonenumbers.parse('+'+sender)
         country_code = phone.country_code
         country = phonenumbers.phonenumberutil.region_code_for_country_code(
@@ -258,7 +259,7 @@ class WhatsappCollector():
             content = message.content
             content = smart_str(content)
             content = smart_str(content.replace('\n', ' '))
-        except:
+        except Exception:
             content = '<NoContent>'
 
         t = str(message)
@@ -275,13 +276,40 @@ class WhatsappCollector():
             try:
                 filename = self._get_filename(message, message.filename)
                 content = '<'+filename+'>'
-            except:
+            except Exception:
                 filename = '<NoFile>'
             if hasattr(message, 'caption'):
                 content = smart_str(message.caption)
 
-        phash = '<PHASH>'
-        checksum = '<CHECKSUM>'
+        phash = ''
+        checksum = ''
+
+        if ((mediatype == 'image' and self.process_image_hashes) or
+                (mediatype == 'video' and self.process_video_hashes) or
+                (mediatype == 'audio' and self.process_audio_hashes)):
+            dir = ""
+            if mediatype == 'image':
+                dir = "/data/image"
+            if mediatype == 'video':
+                dir = "/data/video"
+            if mediatype == 'audio':
+                dir = "/data/audio"
+
+            try:
+                checksum = hash_functions.get_hash_from_method(os.path.join(
+                    dir, message.filename), "checksum")
+            except Exception:
+                print("Couldn't process checksum for file %s." % (
+                    message.filename))
+
+            if mediatype == 'image':
+                try:
+                    phash = hash_functions.get_hash_from_method(os.path.join(
+                        dir, message.filename), "phash")
+                except Exception:
+                    print("Couldn't process phash for file %s." % (
+                        message.filename))
+
         item['message_id'] = mid
         item['group_id'] = gid
         item['group_name'] = group_name
@@ -449,7 +477,7 @@ class WhatsappCollector():
 
                     try:
                         date = self._get_date_from_message(j)
-                    except:
+                    except Exception:
                         continue
 
                     if date > max_date:
@@ -461,9 +489,6 @@ class WhatsappCollector():
                         today_date = date
                         file_name = "/data/text/AllMessages_" + today_date + \
                             ".txt"
-
-                    if self.collect_messages:
-                        self._save_message(j, s_name, gid, mid, file_name)
 
                     if self.collect_images:
                         try:
@@ -482,6 +507,9 @@ class WhatsappCollector():
                             self._get_audio_from_message(j)
                         except Exception as ea:
                             print('!!!!Error getting audio!!!! ', ea)
+
+                    if self.collect_messages:
+                        self._save_message(j, s_name, gid, mid, file_name)
 
             driver.close()
         except Exception as e:
