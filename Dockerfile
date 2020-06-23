@@ -17,4 +17,4 @@ RUN pip install "git+https://github.com/matheusfebarbosa/WebWhatsapp-Wrapper.git
 COPY source /app
 
 # Set the default command
-CMD ["python", "get_messages.py"]
+CMD python get_messages.py -s 2020-06-10 -e 2020-06-11

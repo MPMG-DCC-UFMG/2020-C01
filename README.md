@@ -22,6 +22,42 @@ Em seguida, rode o comando `docker-compose run --rm collector` para iniciar uma 
 
 Na primeira vez que for executado, o coletor requisitará que você leia o codigo QR gerado pelo Whatsapp Web antes de começar a rodar. Para isso você tera que usar um cliente VNC para acessar o navegador utilizado pelo selenium, e conseguir ler o código (para isso usei o [RealVNC](https://www.realvnc.com/en/)). Com o cliente VNC aberto, basta conectar em `localhost:5900` para consultar visualmente o estado do navegador.
 
+## Execução
+
+### Input
+
+{
+  "group_blacklist": ["groupA_id", "groupB_id"],
+  "user_blacklist": ["+99 99 999999999", "+11 11 111111111"],
+  "collection_mode": "period",
+  "start_date": "2020-06-01",
+  "end_date": "2020-06-10",
+  "collect_messages": true,
+  "collect_audios": true,
+  "collect_videos": true,
+  "collect_images": true,
+  "process_audio_hashes": true,
+  "process_image_hashes": true,
+  "process_video_hashes": true,
+}
+
+### Output
+
+{
+  "mid" : "XXXXXX",
+  "gid" : "XXXXXX",
+  "group_name" : "XXXXXX",
+  "country" : "XXXXXX",
+  "sender" : "XXXXXX",
+  "date" : "XXXXXX",
+  "mediatype" : "XXXXXX",
+  "media_message" : "XXXXXX",
+  "content" : "XXXXXX",
+  "filename" : "XXXXXX",
+  "media_checksum": "XXXXXXXXXXXX",
+  "image_phash": "XXXXXXXXXXXX",
+}
+
 
 ## Adendos
 
