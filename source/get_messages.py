@@ -73,6 +73,14 @@ class WhatsappCollector():
 
     Métodos
     -----------
+    Faz a coleta das mensagens de grupos de Whatsapp de acordo
+    com os parâmetros fornecidos na criação do objeto de coleta.
+
+        Parâmetros
+        ------------
+            profile_path : str
+                Caminho para um profile alternativo do navegador
+                utilizado na coleta.
 
     """
     def __init__(self, args):
