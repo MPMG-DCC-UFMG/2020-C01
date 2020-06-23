@@ -153,7 +153,21 @@ def convert_data_from_timestamp(time_message):
     time_obj = datetime.datetime.fromtimestamp(time_message)
     return time_obj
 
-
+def get_load_notifications(path = '/data/notifications/'):
+    messagesIDs = dict()
+    allfiles = [f for f in listdir(path) if isfile(join(path, f))]
+    for f in allfiles:
+        ID = f.split('.')[0].split('@')[0]
+        messagesIDs[ID] = set()
+        with open(path+f, 'r') as fin:
+            for line in fin:
+                data = json.loads(line.strip())
+                mid = data['message_id']
+                messagesIDs[ID].add(mid)
+                
+    return messagesIDs
+  
+  
 def get_load_messages(path = '/data/mids/'):
     messagesIDs = dict()
     allfiles = [f for f in listdir(path) if isfile(join(path, f))]
@@ -172,7 +186,27 @@ def get_load_messages(path = '/data/mids/'):
     return messagesIDs
     
     
-def get_notification_type(message, gid):
+def get_load_notifications(path = 'data/notifications/'):
+    messagesIDs = dict()
+    allfiles = [f for f in listdir(path) if isfile(join(path, f))]
+    for f in allfiles:
+        ID = f.split('.')[0].split('@')[0]
+        messagesIDs[ID] = set()
+        with open(path+f, 'r') as fin:
+            for line in fin:
+                data = json.loads(line.strip())
+                mid = data['message_id']
+                messagesIDs[ID].add(mid)
+                
+    return messagesIDs
+    
+
+def isNotification(messageID):
+    if messageID.find('true') < 0: return False
+    else: return True
+        
+
+def save_notification_(message, gid, path='data/notifications/'):
     if(isinstance(message, NotificationMessage) ):
         #print 'NOTIFICATION', message
         readable = {
@@ -195,39 +229,57 @@ def get_notification_type(message, gid):
         msgtype = message._js_obj['type']
         subtype = message._js_obj['subtype']
         timestamp = message._js_obj['timestamp']
-        name = smart_str( message._js_obj['chat']['contact']['name'])
-        name = name.replace('\t',' ')
-        name = name.replace('\n',' ')
-        name = name.replace('\r','')
-        
-        date = datetime.fromtimestamp(int(timestamp)).strftime('%Y-%m-%d %H:%M:%S')
+        name = message._js_obj['chat']['contact']['name']
+        name = process_content(name)
+        own_phones = ['5531900000000']
+        date = datetime.datetime.fromtimestamp(int(timestamp)).strftime('%Y-%m-%d %H:%M:%S')
         
         try:sender_user = message._js_obj['sender']['id']['user']
         except: sender_user = 'No_sender'
-        
         
         try:from_user = message._js_obj['from']['user']
         except: from_user = 'No_user'    
         
         try: alert   = readable[message.type][message.subtype]
         except KeyError as e: alert = 'Other'
-        #if subtype == 'remove':
-            #pprint(vars(message)) 
         
-        our_phones = ['491705423146', '491705933848']
-        notification_file = '/data/notifications/' + gid + '.txt'
-        noti_file   = '/data/all_notifications.txt'
-        banned_file = '/data/banned.txt'
-        finalstring = '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' %(gid, msgtype, subtype, timestamp, date, name, sender_user, from_user )
-        with open(notification_file, 'a') as fnot:         
-            with open(noti_file, 'a') as fn:         
+        notification = dict()
+        notification['message_id'] = str(message.id)
+        notification['group_id'] = gid
+        notification['type'] = msgtype
+        notification['subtype'] = msgtype
+        notification['timestamp'] = timestamp
+        notification['date'] = date
+        notification['sender'] = sender_user
+        notification['contact_name'] = name
+        notification['from'] = from_user
+      
+        if message._js_obj['recipients']:
+            for item in message._js_obj['recipients']:
+                try:recipient_user = item['user']
+                except: recipient_user = 'No_user'    
+                notification['recipient'] = recipient_user
+                finalstring = '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' %(
+                str(message.id), gid, msgtype, subtype, timestamp, date, name, sender_user, recipient_user, from_user )
                 print(finalstring)
-                print(finalstring, file=fnot)
-                print(finalstring, file=fn)
+                filename = '%s%s.json'%(path, gid)
+                with open(filename, 'a') as json_file:
+                    json.dump(notification, json_file)
+                    print('', file=json_file)
         
-        if subtype == 'remove' and from_user in our_phones:
-            with open(banned_file, 'a') as fb:
-                print(finalstring, file=fb)
+        else:
+            try:recipient_user = message._js_obj['recipients'][0]['user']
+            except: recipient_user = 'No_user'    
+            notification['recipient'] = recipient_user
+            finalstring = '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' %(
+            str(message.id), gid, msgtype, subtype, timestamp, date, name, sender_user, recipient_user, from_user )
+            print(finalstring)
+            filename = '%s%s.json'%(path, gid)
+            with open(filename, 'a') as json_file:
+                json.dump(notification, json_file)
+                print('', file=json_file)
+           
+        return notification  
 
 
 def save_message(message, group_name, msg_id_path, chatID, msg_id, file_name):
@@ -345,8 +397,11 @@ def webCrawler(load, min_date, max_date, profile_path = "/data/firefox_cache"):
         # #get_groups_metadata(driver)
         msg_id_path  = '/data/groupID/'
         
-        print('>>>>>>>>>>> Loading previous collected Messages')
-        messagesID   = get_load_messages( )
+        print('>>>>>>>>>>> Loading previous saved Messages')
+        messagesID      = get_load_messages( )
+        notificationsID = get_load_notifications( )
+
+        
         all_messages = list()
         file_name = "/data/AllMessages_" + today_date+ ".txt"  
         start_date = min_date
@@ -403,52 +458,58 @@ def webCrawler(load, min_date, max_date, profile_path = "/data/firefox_cache"):
             
             local_messages = list()
             print('>>>>>Total messages %d' %( len(messages) ))
-            with open('/data/all_msg_ids.txt', 'a') as fo:
-                for mid in messages : 
-                    local_messages.append([mid, gid])
-                    all_messages.append([mid, gid])
-                    print('%s\t%s' %(mid, gid), file=fo)
+            for mid in messages : 
+                local_messages.append([mid, gid])
+                all_messages.append([mid, gid])
             count +=1
             
             for msg in local_messages:
                 count +=1
                 gid = msg[1].split('@')[0]
                 mid = msg[0]
+                
+                 
+                if isNotification(mid):
+                    if gid not in notificationsID.keys(): notificationsID[gid] = set()
+                    if mid.strip() in notificationsID[gid]: continue
+                    j = driver.get_message_by_id(mid)
+                    save_notification_(j, gid,  path='data/notifications/')
                
-                if mid.strip() in messagesID[gid]['messages']:
-                    print('Message: %d >>> %s from %s was CHECKED' %(count, mid, gid))
-                    continue
                 else:
-                    try:
-                        j = driver.get_message_by_id(mid)
-                    except Exception as e:
-                        print('Error getting a message >>', e)
+                    if mid.strip() in messagesID[gid]['messages']:
+                        print('Message: %d >>> %s from %s was CHECKED' %(count, mid, gid))
                         continue
-                    if not j : continue
-                    #print 'Message: ', count, gid, mid
-                
-                try:    date = get_date_from_message(j)
-                except: continue
-                
-                if date > max_date: break
-                if date < start_date: continue
-                if today_date != date:  #update day
-                        today_date = date
-                        file_name = "/data/text/AllMessages_" + today_date+ ".txt"
-                save_message(j, s_name, msg_id_path, gid, mid, file_name)
-                
-                
-                try:
-                    get_image_from_message(j)
-                except Exception as ei: print('!!!!Error getting image!!!! ', ei)
+                    else:
+                        try:
+                            j = driver.get_message_by_id(mid)
+                        except Exception as e:
+                            print('Error getting a message >>', e)
+                            continue
+                        if not j : continue
+                        #print 'Message: ', count, gid, mid
                     
-                try:
-                    get_video_from_message(j)
-                except Exception as ev: print('!!!!Error getting video!!!! ', ev)
-                
-                try:
-                    get_audio_from_message(j)
-                except Exception as ea: print('!!!!Error getting audio!!!! ', ea)
+                    try:    date = get_date_from_message(j)
+                    except: continue
+                    
+                    if date > max_date: break
+                    if date < start_date: continue
+                    if today_date != date:  #update day
+                            today_date = date
+                            file_name = "/data/text/AllMessages_" + today_date+ ".txt"
+                    save_message(j, s_name, msg_id_path, gid, mid, file_name)
+                    
+                    
+                    try:
+                        get_image_from_message(j)
+                    except Exception as ei: print('!!!!Error getting image!!!! ', ei)
+                        
+                    try:
+                        get_video_from_message(j)
+                    except Exception as ev: print('!!!!Error getting video!!!! ', ev)
+                    
+                    try:
+                        get_audio_from_message(j)
+                    except Exception as ea: print('!!!!Error getting audio!!!! ', ea)
         
         driver.close()
     except Exception as e:
