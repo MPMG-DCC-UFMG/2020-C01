@@ -14,6 +14,7 @@ import datetime
 import hashlib
 import os
 import pathlib
+import json
 from pprint import pprint
 from os import listdir
 from os.path import isfile, join
@@ -186,7 +187,7 @@ def get_load_messages(path = '/data/mids/'):
     return messagesIDs
     
     
-def get_load_notifications(path = 'data/notifications/'):
+def get_load_notifications(path = '/data/notifications/'):
     messagesIDs = dict()
     allfiles = [f for f in listdir(path) if isfile(join(path, f))]
     for f in allfiles:
@@ -206,7 +207,7 @@ def isNotification(messageID):
     else: return True
         
 
-def save_notification_(message, gid, path='data/notifications/'):
+def save_notification_(message, gid, path='/data/notifications/'):
     if(isinstance(message, NotificationMessage) ):
         #print 'NOTIFICATION', message
         readable = {
@@ -347,7 +348,7 @@ def save_message(message, group_name, msg_id_path, chatID, msg_id, file_name):
         print(messageLine)
         
         # Save message on group ID file
-        message_group_filename = 'data/groupID/%s.json'%(gid)
+        message_group_filename = '/data/groupID/%s.json'%(gid)
         with open(message_group_filename, 'a') as json_file:
             json.dump(item, json_file)
             print('', file=json_file)
@@ -356,7 +357,7 @@ def save_message(message, group_name, msg_id_path, chatID, msg_id, file_name):
         with open(message_day_filename, 'a') as json_file:
             json.dump(item, json_file)
             print('', file=json_file)
-        reference_mid_filename = 'data/mids/%s.txt' %(gid)
+        reference_mid_filename = '/data/mids/%s.txt' %(gid)
         #Save mid reference for future checks
         with open(reference_mid_filename, 'a') as fmid:
             messageLine = '%s\t%s\t%s' %(mid, gid, smart_str(date))
@@ -473,7 +474,7 @@ def webCrawler(load, min_date, max_date, profile_path = "/data/firefox_cache"):
                     if gid not in notificationsID.keys(): notificationsID[gid] = set()
                     if mid.strip() in notificationsID[gid]: continue
                     j = driver.get_message_by_id(mid)
-                    save_notification_(j, gid,  path='data/notifications/')
+                    save_notification_(j, gid,  path='/data/notifications/')
                
                 else:
                     if mid.strip() in messagesID[gid]['messages']:
