@@ -80,6 +80,24 @@ No geral, a unica grande mudança que fiz foi comentar a linha que pega os metad
 
 Também comentei ou removi algumas linhas que não estavam fazendo nada (no geral por conta do driver do selenium estar rodando no docker agora, e algumas coisas relacionadas a conversão de strings para unicode, que agora já são padrão unicode no python3).
 
+## Entrada
+
+Abaixo, os parâmetros da entrada necessários para execução do coletor:
+
+- collection_mode: Modo de coleção a ser utilizado ('period' ou 'unread').
+- start_date: Data de início do período de coleta (Modo 'period').
+- end_date: Data de término do período de coleta (Modo 'period').
+- collect_messages: Se mensagens de texto devem ser coletadas durante a execução.
+- collect_audios: Se áudios devem ser coletadas durante a execução.
+- collect_videos: Se vídeos devem ser coletadas durante a execução.
+- collect_images: Se imagens devem ser coletadas durante a execução.
+- process_audio_hashes: Se hashes de áudios devem ser calculados durante a execução.
+- process_image_hashes: Se hashes de imagens devem ser calculados durante a execução.
+- process_video_hashes: Se hashes de vídeos devem ser calculados durante a execução.
+- group_blacklist: Lista de grupos que devem ser excluídos da coleta
+- user_blacklist: Lista de usuários que devem ser excluídos da coleta
+- json: Caminho para um arquivo json de configuração de execução. Individualmente, as opções presentes no arquivo sobescreveram os argumentos de linha de comando, caso eles sejam fornecidos. Caso esse parâmetro seja utilizado, deve-se fornecer um arquivo .json com os parâmetros listados acima, dentro da pasta config
+
 ## Saídas
 
 É gerada uma pasta `data`, em que são armazenados os arquivos de saída da coleta. Dentro desta pasta, é gerado um log de erros (i.e. _log.txt_). Além disso, as demais informações são divididas em pastas, descritas abaixo:
