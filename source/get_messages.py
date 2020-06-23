@@ -44,18 +44,19 @@ class WhatsappCollector():
                 json_args = json.load(json_file)
                 args_dict.update(json_args)
 
-        self.collection_mode = args_dict["collection_mode"]
-        self.start_date = args_dict["start_date"]
-        self.end_date = args_dict["end_date"]
-        self.group_blacklist = args_dict["group_blacklist"]
-        self.user_blacklist = args_dict["user_blacklist"]
-        self.collect_messages = args_dict["collect_messages"]
-        self.collect_audios = args_dict["collect_audios"]
-        self.collect_videos = args_dict["collect_videos"]
-        self.collect_images = args_dict["collect_images"]
-        self.process_audio_hashes = args_dict["process_audio_hashes"]
-        self.process_image_hashes = args_dict["process_image_hashes"]
-        self.process_video_hashes = args_dict["process_video_hashes"]
+        self.collection_mode       = args_dict["collection_mode"]
+        self.start_date            = args_dict["start_date"]
+        self.end_date              = args_dict["end_date"]
+        self.group_blacklist       = args_dict["group_blacklist"]
+        self.user_blacklist        = args_dict["user_blacklist"]
+        self.collect_messages      = args_dict["collect_messages"]
+        self.collect_audios        = args_dict["collect_audios"]
+        self.collect_videos        = args_dict["collect_videos"]
+        self.collect_images        = args_dict["collect_images"]
+        self.collect_notifications = args_dict["collect_notifications"]
+        self.process_audio_hashes  = args_dict["process_audio_hashes"]
+        self.process_image_hashes  = args_dict["process_image_hashes"]
+        self.process_video_hashes  = args_dict["process_video_hashes"]
 
     def _process_content(self, string):
         string = string.strip()
@@ -350,6 +351,7 @@ class WhatsappCollector():
 
         return item
 
+        
     def run(self, profile_path="/data/firefox_cache"):
         if not os.path.exists(profile_path):
             os.makedirs(profile_path)
@@ -367,8 +369,9 @@ class WhatsappCollector():
 
         min_date = self.start_date
         max_date = self.end_date
+        include_notf = self.collect_notifications
 
-        if (not max_date or not min_date):
+        if (self.collection_mode == 'period') and (min_date < '2020-01-01'):
             raise Exception("Can't start collection without a start and end"
                             " date.")
 
@@ -386,8 +389,6 @@ class WhatsappCollector():
             today_date = datetime.date.today().strftime("%Y_%m_%d")
             today_date = 'test'
             date_format = "%Y-%m-%d"
-
-            all_messages = list()
             file_name = "/data/AllMessages_" + today_date + ".txt"
             start_date = min_date
 
@@ -402,12 +403,17 @@ class WhatsappCollector():
             for chat in (all_chats):
                 gid = chat.id
                 gid = gid.split('@')[0]
-
-                if not chat._js_obj['isGroup'] or gid in self.group_blacklist:
+                s_name = self._process_content(chat.name)
+                
+                #Does not collect direct messages, only group chats
+                if not chat._js_obj['isGroup']:
+                    continue
+                    
+                #Skip group if it is on blacklist (can be name or groupID)
+                if s_name in self.group_blacklist or gid in self.group_blacklist:
                     continue
 
                 # PRINT CHAT INFORMATION
-                s_name = self._process_content(chat.name)
                 members = chat._js_obj['groupMetadata']['participants']
                 timestamp = gid.split('-')[-1]
                 date = convert_data_from_timestamp(float(timestamp))
@@ -425,33 +431,47 @@ class WhatsappCollector():
                     messagesID[gid]['date'] = '2000-01-01'
 
                 # PROCESS PREVIOUS LOADED MESSAGES ID AND LAST DATE
-                if messagesID[gid]['date'] > max_date:
-                    continue
-                if messagesID[gid]['date'] > min_date:
-                    start_date = messagesID[gid]['date']
-                    till_date = datetime.datetime.strptime(start_date,
-                                                           date_format)
-                else:
-                    start_date = min_date
-                    till_date = datetime.datetime.strptime(start_date,
-                                                           date_format)
+                if self.collection_mode == 'continuous':
+                    if messagesID[gid]['date'] > max_date:
+                        continue
+                    if messagesID[gid]['date'] > min_date:
+                        start_date = messagesID[gid]['date']
+                        till_date = datetime.datetime.strptime(start_date,
+                                                               date_format)
+                    else:
+                        start_date = min_date
+                        till_date = datetime.datetime.strptime(start_date,
+                                                               date_format)
+                    
+                    # LOAD MESSAGES FROM WHATSAPP SINCE MIN_DATE
+                    messages = chat.load_earlier_messages_till(till_date)
+                    messages = driver.get_all_message_ids_in_chat(
+                    chat, include_notifications=include_notf)
 
-                # LOAD MESSAGES FROM WHATSAPP SINCE MIN_DATE
-                messages = chat.load_earlier_messages_till(till_date)
-                messages = driver.get_all_message_ids_in_chat(
-                    chat, include_notifications=True)
+                    
+                elif self.collection_mode == 'period':
+                    till_date = datetime.datetime.strptime(start_date,
+                                                               date_format)
+                    # LOAD MESSAGES FROM WHATSAPP SINCE MIN_DATE
+                    messages = chat.load_earlier_messages_till(till_date)
+                    messages = driver.get_all_message_ids_in_chat(
+                    chat, include_notifications=include_notf)
+
+                elif self.collection_mode == 'unread':
+                    # LOAD UNREAD MESSAGES FROM WHATSAPP
+                    messages = chat.get_unread_messages(self, include_me=False,
+                            include_notifications=include_notf)
+
+
 
                 local_messages = list()
                 print('>>>>>Total messages %d' % (len(messages)))
-                for mid in messages:
-                    local_messages.append([mid, gid])
-                    all_messages.append([mid, gid])
                 count += 1
 
-                for msg in local_messages:
+                for msg in messages:
                     count += 1
-                    gid = msg[1].split('@')[0]
-                    mid = msg[0]
+                    gid = gid.split('@')[0]
+                    mid = msg
 
                     if self._is_notification(mid):
                         if gid not in notificationsID.keys():
@@ -466,6 +486,7 @@ class WhatsappCollector():
                         print('Message: %d >>> %s from %s was CHECKED' %
                               (count, mid, gid))
                         continue
+                    
                     else:
                         try:
                             j = driver.get_message_by_id(mid)
@@ -474,22 +495,29 @@ class WhatsappCollector():
                             continue
                         if not j:
                             continue
-
+                    
+                    
+                    sender = j.sender.id
+                    sender = sender.replace(' ', '').strip()
+                    sender = sender.split('@')[0]
+                    if sender in self.user_blacklist or '+'+sender in self.user_blacklist:
+                        continue
+                        
                     try:
                         date = self._get_date_from_message(j)
                     except Exception:
                         continue
 
-                    if date > max_date:
+                    if (date > max_date) and (self.collection_mode == 'period'):
                         break
-                    if date < start_date:
+                    if (date < start_date):
                         continue
                     # Update day
                     if today_date != date:
                         today_date = date
                         file_name = "/data/text/AllMessages_" + today_date + \
                             ".txt"
-
+                    
                     if self.collect_images:
                         try:
                             self._get_image_from_message(j)
@@ -523,16 +551,16 @@ def main():
 
     parser.add_argument("-m", "--collection_mode", type=str,
                         help="Modo de coleção a ser utilizado (\'period\'"
-                        " ou \'unread\').",
-                        default='unread')
+                        " ou \'unread\' ou \'continuous\').",
+                        default='continuous')
 
     parser.add_argument("-s", "--start_date", type=str,
                         help="Data de início do período de coleta (Modo"
-                        " \'period\').")
+                        " \'period\').", default='2000-01-01')
 
     parser.add_argument("-e", "--end_date", type=str,
                         help="Data de término do período de coleta (Modo"
-                        " \'period\').")
+                        " \'period\').", default='2999-12-31')
 
     parser.add_argument("--collect_messages", type=bool,
                         help="Se mensagens de texto devem ser coletadas"
@@ -548,6 +576,11 @@ def main():
 
     parser.add_argument("--collect_images", type=bool,
                         help="Se imagens devem ser coletadas durante a"
+                        " execução.", default=True)
+
+
+    parser.add_argument("--collect_notifications", type=bool,
+                        help="Se as notificações devem ser coletadas durante a"
                         " execução.", default=True)
 
     parser.add_argument("--process_audio_hashes", type=bool,
