@@ -210,7 +210,7 @@ class WhatsappCollector():
                         (str(message.id), gid, msgtype, subtype, timestamp,
                          date, name, sender_user, recipient_user, from_user)
                     print(finalstring)
-                    filename = '%s%s.json'%(path, gid)
+                    filename = '%s%s.json' % (path, gid)
                     with open(filename, 'a') as json_file:
                         json.dump(notification, json_file)
                         print('', file=json_file)
@@ -298,11 +298,14 @@ class WhatsappCollector():
         if mediatype == 'image':
             item['phash'] = phash
 
-        messageLine = '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%r\t%s\t%s' % (mid, gid, group_name, country, smart_str(sender), smart_str(date), mediatype, checksum, smart_str(filename), process_content(content))
+        messageLine = '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%r\t%s\t%s' % \
+            (mid, gid, group_name, country, smart_str(sender),
+             smart_str(date), mediatype, checksum, smart_str(filename),
+             self._process_content(content))
         print(messageLine)
 
         # Save message on group ID file
-        message_group_filename = '/data/groupID/%s.json'%(gid)
+        message_group_filename = '/data/groupID/%s.json' % (gid)
         with open(message_group_filename, 'a') as json_file:
             json.dump(item, json_file)
             print('', file=json_file)
@@ -311,7 +314,7 @@ class WhatsappCollector():
         with open(message_day_filename, 'a') as json_file:
             json.dump(item, json_file)
             print('', file=json_file)
-        reference_mid_filename = '/data/mids/%s.txt' %(gid)
+        reference_mid_filename = '/data/mids/%s.txt' % (gid)
         # Save mid reference for future checks
         with open(reference_mid_filename, 'a') as fmid:
             messageLine = '%s\t%s\t%s' % (mid, gid, smart_str(date))
@@ -422,7 +425,7 @@ class WhatsappCollector():
                     gid = msg[1].split('@')[0]
                     mid = msg[0]
 
-                    if self._isNotification(mid):
+                    if self._is_notification(mid):
                         if gid not in notificationsID.keys():
                             notificationsID[gid] = set()
                         if mid.strip() in notificationsID[gid]:
