@@ -7,6 +7,9 @@ WORKDIR /app
 # COPY requirements to /app dir
 COPY requirements.txt /app
 
+# Solve numpy dependency
+RUN python -mpip install numpy
+
 # Install any needed packages specified in base.txt
 RUN pip install --trusted-host pypi.python.org -r requirements.txt
 
@@ -17,4 +20,4 @@ RUN pip install "git+https://github.com/matheusfebarbosa/WebWhatsapp-Wrapper.git
 COPY source /app
 
 # Set the default command
-CMD ["python", "get_messages.py"]
+CMD python get_messages.py -s 2020-06-10 -e 2020-06-11
