@@ -458,7 +458,7 @@ class WhatsappCollector():
                 isinstance(message, MESSAGE.MMSMessage)):
             mediatype = smart_str(message.type)
             try:
-                filename = self._generate_unique_filename(message, message.filename)
+                filename = message.filename
                 content = '<'+filename+'>'
             except Exception:
                 filename = '<NoFile>'
