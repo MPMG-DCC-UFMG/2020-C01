@@ -80,6 +80,100 @@ No geral, a unica grande mudança que fiz foi comentar a linha que pega os metad
 
 Também comentei ou removi algumas linhas que não estavam fazendo nada (no geral por conta do driver do selenium estar rodando no docker agora, e algumas coisas relacionadas a conversão de strings para unicode, que agora já são padrão unicode no python3).
 
+## Utilização do docker
+
+Para que a instalação e execução dos scripts de coleta sejam feitas de forma facilitada, optamos por utilizar a plataforma Docker para encapsular o código e suas dependências.
+
+Docker é um software contêiner que fornece uma camada de abstração e automação para virtualização de sistema operacional no Windows e no Linux. O suporte para espaços de nomes do núcleo do Linux na maioria das vezes isola uma visão da aplicação do ambiente operacional, incluindo árvores de processo, rede, IDs de usuário e sistemas de arquivos montados.
+
+A estrutura do programa é dividida em dois containers diferentes. O primeiro é um que roda o Selenium,, um framework criado para automatização de browsers, e que é utilizado pela biblioteca webwhatsapi, necessária para fazer a coleta das informações do whatsapp web. O segundo é o container do código em si, que guarda os scripts e comunica com o container do Selenium para fazer a coleta. A definição destes containers pode ser vista nos arquivos Dockerfile, e docker-compose.yml.
+
+O arquivo Dockerfile descreve o container que contém o código do coletor. Ele define coisas como a versão do python a ser utilizada, a instalação de dependências e a cópia dos códigos em si. Mais detalhes podem ser vistos nos comentários feitos no arquivo.
+
+O arquivo docker-compose.yml define como será feita a composição dos dois containers, criando a rede para que eles se comuniquem entre si, e definindo outras configurações individuais para cada um dos containers.
+
+## Scripts:
+
+O código do coletor é dividido em três scripts que são encapsulados em um container do Docker que por default tem o nome “collector”. 
+
+O arquivo docker-compose.yml define a relação deste container com o sistema operacional e o container do Selenium. Um ponto importante de ser notado nessa composição e a execução dos scripts:
+Como os scripts são executados dentro de um container que se comporta como uma máquina virtual, eles só conseguem acessar pastas que estão dentro desta “máquina” (Isto inclui os arquivos de entrada e saída). Para fazer com que o código tenha acesso a pastas do sistema operacional do usuário, o arquivo docker-compose.yml define um espelhamento de pastas na seção ‘volumes’. Cada espelhamento está no formato “/pasta/do/sistema/operacional/local:/caminho/para/pasta/no/container”, que define que esta pasta local no Sistema Operacional será acessível dentro do container no caminho escolhido. Por padrão, estão definidas uma pasta ‘data’ para arquivos de saída do coletor, e config para guardar arquivos de configuração json que servem de entrada para o programa.
+
+
+
+
+- get_messages.py
+  
+Define a classe “WhatsappCollector”, que encapsula o coletor de grupos do Whatsapp. Possui o método principal que realiza a leitura da entrada e faz a coleta das mensagens, mídias e notificações.
+
+A execução deste script pode ser realizada da seguinte forma :
+        """
+        docker-compose run --rm collector python get_messages.py
+        """
+- metadata_groups.py
+Define uma biblioteca auxiliar que compreende funções que coletam metadados de todos os grupos que o usuário participa. 
+  A execução deste script pode ser realizada da seguinte forma :
+        """
+        docker-compose run --rm collector python metadata_groups.py
+        """
+        
+- process_hashes.py
+   Define uma biblioteca auxiliar que compreende funções necessárias para realizar o hashing das mídias e mensagens de textos baixadas.
+   A execução deste script pode ser realizada da seguinte forma :
+        """
+        docker-compose run --rm collector python process_hashes.py        
+        """
+
+## Classes 
+    
+    Classe que encapsula o coletor de grupos do Whatsapp. Possui
+    o método principal que realiza a leitura da entrada e faz a
+    coleta das mensagens, mídias e notificações.
+ 
+    Atributos
+    -----------
+    collection_mode : str
+                Modo de coleção a ser utilizado ("period" ou "unread" ou  
+            "continuous").
+    start_date : str
+                Data de início do período de coleta (Modo "period").
+    end_date : str
+                Data de término do período de coleta (Modo "period").
+    group_blacklist : list
+                Lista de ids de grupos que devem ser excluídos da coleta.
+    user_blacklist : list
+                Lista de ids de usuários que devem ser excluídos da coleta.
+    collect_messages : bool
+                Se mensagens de texto devem ser coletadas durante a execução.
+    collect_audios : bool
+                Se áudios devem ser coletadas durante a execução.
+    collect_videos : bool
+                Se vídeos devem ser coletadas durante a execução.
+    collect_images : bool
+                Se imagens devem ser coletadas durante a execução.
+    collect_notifications : bool
+                Se notificações devem ser coletadas durante a execução.
+    process_audio_hashes : bool
+                Se hashes de áudios devem ser calculados durante a execução.
+    process_image_hashes : bool
+                Se hashes de imagens devem ser calculados durante a execução.
+    process_video_hashes : bool
+                Se hashes de vídeos devem ser calculados durante a execução.
+ 
+ 
+    Métodos
+    -----------
+    Faz a coleta das mensagens de grupos de Whatsapp de acordo
+    com os parâmetros fornecidos na criação do objeto de coleta.
+ 
+        Parâmetros
+        ------------
+            profile_path : str
+                Caminho para um profile alternativo do navegador
+                utilizado na coleta.
+
+
+
 ## Entrada
 
 Abaixo, os parâmetros da entrada necessários para execução do coletor:

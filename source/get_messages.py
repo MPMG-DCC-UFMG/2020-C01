@@ -73,6 +73,14 @@ class WhatsappCollector():
 
     Métodos
     -----------
+    Faz a coleta das mensagens de grupos de Whatsapp de acordo
+    com os parâmetros fornecidos na criação do objeto de coleta.
+
+        Parâmetros
+        ------------
+            profile_path : str
+                Caminho para um profile alternativo do navegador
+                utilizado na coleta.
 
     """
     def __init__(self, args):
@@ -585,13 +593,13 @@ class WhatsappCollector():
             random.shuffle(all_chats)
 
             for chat in (all_chats):
-                gid = chat.id
-                gid = gid.split('@')[0]
-                s_name = self._process_string(chat.name)
-
                 # Does not collect direct messages, only group chats
                 if not chat._js_obj['isGroup']:
                     continue
+
+                gid = chat.id
+                gid = gid.split('@')[0]
+                s_name = self._process_string(chat.name)
 
                 # Skip group if it is on blacklist (can be name or groupID)
                 if (s_name in self.group_blacklist or
@@ -681,7 +689,7 @@ class WhatsappCollector():
                     sender = sender.replace(' ', '').strip()
                     sender = sender.split('@')[0]
                     if (sender in self.user_blacklist or
-                            '+'+sender in self.user_blacklist):
+                            '+' + sender in self.user_blacklist):
                         continue
 
                     try:
@@ -791,8 +799,6 @@ def main():
                         "comando, caso eles sejam fornecidos.")
 
     args = parser.parse_args()
-
-    print(args)
 
     try:
         collector = WhatsappCollector(args)

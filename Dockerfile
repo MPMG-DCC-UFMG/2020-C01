@@ -13,11 +13,11 @@ RUN python -mpip install numpy
 # Install any needed packages specified in base.txt
 RUN pip install --trusted-host pypi.python.org -r requirements.txt
 
-#Install webwhatsappapi
+# Install webwhatsappapi lib
 RUN pip install "git+https://github.com/matheusfebarbosa/WebWhatsapp-Wrapper.git@23f278a417bae382380970125da49bb91e5fa215"
 
 # COPY the source code
 COPY source /app
 
-# Set the default command
+# Set the default run command
 CMD python get_messages.py
