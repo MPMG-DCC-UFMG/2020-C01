@@ -1,16 +1,6 @@
-# Coletor de Whatsapp - Relatório de Instalação
+# Coletor de Whatsapp
 
-Passos que segui para fazer o coletor do monitor funcionar em minha máquina.
-
-## Problemas Iniciais
-
-Primeiramente, tive problemas para usar a biblioteca de coleta [webwhatsapi](https://github.com/mukulhase/WebWhatsapp-Wrapper) normalmente em um ambiente python em conjunto com o código de coleta do monitor.
-
-Na minha primeira tentativa, criei um ambiente python2 e tentei instalar as bibliotecas necessárias, e já tive um problema aí. Não consegui achar as bibliotecas nas versões necessárias para rodar o código (a versão da lib webwhatsapi disponível no pypi está desatualizada). Mesmo assim, instalei as versões que consegui, e obtive um erro de compatibilidade entre o codigo da api e o selenium.
-
-A partir daí, tentei mudar para um ambiente python3 e usar a versão mais nova da biblioteca, baixando o código fonte direto do github. Para não ter problemas de compatibilidade novamente, tentei usar o docker para encapsular as sessões do selenium e também o código do coletor. Essa foi a abordagem que deu mais certo até então.
-
-## Setup
+## Instalação
 
 _Todos os passos foram testados em máquinas linux (um notebook com Ubunutu 20.04 e um Raspberry Pi 3B rodando Raspbian 10)._
 
@@ -18,67 +8,11 @@ Primeiramente, faça a instalação do Docker seguindo os seguintes [passos](htt
 
 Com o docker instalado, clone este repositório para sua máquina. Dentro da pasta criada, rode o comando `sudo docker-compose build` para que as imagens necessárias sejam criadas.
 
-Em seguida, rode o comando `sudo docker-compose run --rm collector` para iniciar uma coleta (por padrão, fará uma coleta das mensagens de todos os grupos dos dias 26-05-2020 a 27-05-2020).
+Em seguida, como teste, rode o comando `sudo docker-compose run --rm collector` para iniciar uma coleta (por padrão, fará uma coleta das mensagens de todos os grupos dos dias 26-05-2020 a 27-05-2020).
 
 Mais informações sobre a necessidade de executar os comandos com privilégios `sudo` podem ser encontradas [aqui](https://docs.docker.com/engine/install/linux-postinstall/)
 
 Na primeira vez que for executado, o coletor requisitará que você leia o codigo QR gerado pelo Whatsapp Web antes de começar a rodar. Para isso você tera que usar um cliente VNC para acessar o navegador utilizado pelo selenium, e conseguir ler o código (para isso usei o [RealVNC](https://www.realvnc.com/en/)). Com o cliente VNC aberto, basta conectar em `localhost:5900` para consultar visualmente o estado do navegador.
-
-## Execução
-
-### Input
-
-{
-"group_blacklist": ["groupA_id", "groupB_id"],
-"user_blacklist": ["+99 99 999999999", "+11 11 111111111"],
-"collection_mode": "period",
-"start_date": "2020-06-01",
-"end_date": "2020-06-10",
-"collect_messages": true,
-"collect_audios": true,
-"collect_videos": true,
-"collect_images": true,
-"process_audio_hashes": true,
-"process_image_hashes": true,
-"process_video_hashes": true,
-}
-
-### Output
-
-{
-"mid" : "XXXXXX",
-"gid" : "XXXXXX",
-"group_name" : "XXXXXX",
-"country" : "XXXXXX",
-"sender" : "XXXXXX",
-"date" : "XXXXXX",
-"mediatype" : "XXXXXX",
-"media_message" : "XXXXXX",
-"content" : "XXXXXX",
-"filename" : "XXXXXX",
-"media_checksum": "XXXXXXXXXXXX",
-"image_phash": "XXXXXXXXXXXX",
-}
-
-## Adendos
-
-Alguns pontos que acho relevante levantar.
-
-### Conversão para Python 3
-
-Inicialmente o código do coletor estava escrito em python2, e como disse, tive problemas para utilizá-lo com versões mais novas da biblioteca.
-
-Dessa forma, eu converti o código fonte para python3 utilizando a biblioteca [futurize](https://python-future.org/futurize.html). Ela passa por todo o código aplicando modificações para que se torne válido em Python 3, e também retro compatível com Python 2.
-
-Além disso, tive que remover a dependência do django, que não possuia as funções de String utilizadas em python 3. No lugar, criei uma função simples que creio que faz a mesma coisa que essas outras funções.
-
-Creio que essas mudanças não quebraram o funcionamento do coletor, mas creio que é válida uma inspeção mais a fundo sobre os possíveis problemas de compatibilidade.
-
-### Outras modificações
-
-No geral, a unica grande mudança que fiz foi comentar a linha que pega os metadados dos grupos, pois não entendi o que ela precisava para funcionar.
-
-Também comentei ou removi algumas linhas que não estavam fazendo nada (no geral por conta do driver do selenium estar rodando no docker agora, e algumas coisas relacionadas a conversão de strings para unicode, que agora já são padrão unicode no python3).
 
 ## Utilização do docker
 
@@ -99,80 +33,129 @@ O código do coletor é dividido em três scripts que são encapsulados em um co
 O arquivo docker-compose.yml define a relação deste container com o sistema operacional e o container do Selenium. Um ponto importante de ser notado nessa composição e a execução dos scripts:
 Como os scripts são executados dentro de um container que se comporta como uma máquina virtual, eles só conseguem acessar pastas que estão dentro desta “máquina” (Isto inclui os arquivos de entrada e saída). Para fazer com que o código tenha acesso a pastas do sistema operacional do usuário, o arquivo docker-compose.yml define um espelhamento de pastas na seção ‘volumes’. Cada espelhamento está no formato “/pasta/do/sistema/operacional/local:/caminho/para/pasta/no/container”, que define que esta pasta local no Sistema Operacional será acessível dentro do container no caminho escolhido. Por padrão, estão definidas uma pasta ‘data’ para arquivos de saída do coletor, e config para guardar arquivos de configuração json que servem de entrada para o programa.
 
-
-
-
-- get_messages.py
+### get_messages.py
   
 Define a classe “WhatsappCollector”, que encapsula o coletor de grupos do Whatsapp. Possui o método principal que realiza a leitura da entrada e faz a coleta das mensagens, mídias e notificações.
 
-A execução deste script pode ser realizada da seguinte forma :
-        """
-        docker-compose run --rm collector python get_messages.py
-        """
-- metadata_groups.py
+A execução deste script pode ser realizada da seguinte forma:  
+
+`docker-compose run --rm collector python get_messages.py`
+
+### metadata_groups.py
+
 Define uma biblioteca auxiliar que compreende funções que coletam metadados de todos os grupos que o usuário participa. 
-  A execução deste script pode ser realizada da seguinte forma :
-        """
-        docker-compose run --rm collector python metadata_groups.py
-        """
+  
+A execução deste script pode ser realizada da seguinte forma : 
+
+`docker-compose run --rm collector python metadata_groups.py`
         
-- summarization_util.py
-   Define uma biblioteca auxiliar que compreende funções extras para realizar sumarização das mídias e mensagens de textos de um certo período.
-   A execução deste script pode ser realizada da seguinte forma :
-        """
-        docker-compose run --rm collector python summarization_util.py        
-        """
+### summarization_util.py
+
+Define uma biblioteca auxiliar que compreende funções extras para realizar sumarização das mídias e mensagens de textos de um certo período.
+  
+A execução deste script pode ser realizada da seguinte forma : 
+
+`docker-compose run --rm collector python summarization_util.py`
 
 ## Classes 
-    
-    Classe que encapsula o coletor de grupos do Whatsapp. Possui
-    o método principal que realiza a leitura da entrada e faz a
-    coleta das mensagens, mídias e notificações.
- 
-    Atributos
-    -----------
-    collection_mode : str
-                Modo de coleção a ser utilizado ("period" ou "unread" ou  
-            "continuous").
-    start_date : str
-                Data de início do período de coleta (Modo "period").
-    end_date : str
-                Data de término do período de coleta (Modo "period").
-    group_blacklist : list
-                Lista de ids de grupos que devem ser excluídos da coleta.
-    user_blacklist : list
-                Lista de ids de usuários que devem ser excluídos da coleta.
-    collect_messages : bool
-                Se mensagens de texto devem ser coletadas durante a execução.
-    collect_audios : bool
-                Se áudios devem ser coletadas durante a execução.
-    collect_videos : bool
-                Se vídeos devem ser coletadas durante a execução.
-    collect_images : bool
-                Se imagens devem ser coletadas durante a execução.
-    collect_notifications : bool
-                Se notificações devem ser coletadas durante a execução.
-    process_audio_hashes : bool
-                Se hashes de áudios devem ser calculados durante a execução.
-    process_image_hashes : bool
-                Se hashes de imagens devem ser calculados durante a execução.
-    process_video_hashes : bool
-                Se hashes de vídeos devem ser calculados durante a execução.
- 
- 
-    Métodos
-    -----------
-    Faz a coleta das mensagens de grupos de Whatsapp de acordo
-    com os parâmetros fornecidos na criação do objeto de coleta.
- 
-        Parâmetros
-        ------------
-            profile_path : str
-                Caminho para um profile alternativo do navegador
-                utilizado na coleta.
+
+### Classe 'WhatsappCollector'
+```
+  Classe que encapsula o coletor de grupos do Whatsapp. Possui
+  o método principal que realiza a leitura da entrada e faz a
+  coleta das mensagens, mídias e notificações.
+
+  Atributos
+  -----------
+  collection_mode : str
+              Modo de coleção a ser utilizado ("period" ou "unread" ou  
+          "continuous").
+  start_date : str
+              Data de início do período de coleta (Modo "period").
+  end_date : str
+              Data de término do período de coleta (Modo "period").
+  group_blacklist : list
+              Lista de ids de grupos que devem ser excluídos da coleta.
+  user_blacklist : list
+              Lista de ids de usuários que devem ser excluídos da coleta.
+  collect_messages : bool
+              Se mensagens de texto devem ser coletadas durante a execução.
+  collect_audios : bool
+              Se áudios devem ser coletadas durante a execução.
+  collect_videos : bool
+              Se vídeos devem ser coletadas durante a execução.
+  collect_images : bool
+              Se imagens devem ser coletadas durante a execução.
+  collect_notifications : bool
+              Se notificações devem ser coletadas durante a execução.
+  process_audio_hashes : bool
+              Se hashes de áudios devem ser calculados durante a execução.
+  process_image_hashes : bool
+              Se hashes de imagens devem ser calculados durante a execução.
+  process_video_hashes : bool
+              Se hashes de vídeos devem ser calculados durante a execução.
 
 
+  Métodos
+  -----------
+  Faz a coleta das mensagens de grupos de Whatsapp de acordo
+  com os parâmetros fornecidos na criação do objeto de coleta.
+
+      Parâmetros
+      ------------
+          profile_path : str
+              Caminho para um profile alternativo do navegador
+              utilizado na coleta.
+```
+
+### Classe 'GroupMetadataCollector'
+
+```
+  Classe que encapsula o coletor de metadados de grupos do Whatsapp. Possui
+  o método principal que realiza a leitura da entrada e faz a coleta de
+  informações como o título, integrantes, criador e administrados dos grupos
+  que o usuário faz parte.
+
+  Atributos
+  -----------
+  group_blacklist : list
+          Lista de ids de grupos que devem ser excluídos da coleta.
+
+  Métodos
+  -----------
+  run()
+      Faz a coleta dos metadados de grupos de Whatsapp de acordo
+      com os parâmetros fornecidos na criação do objeto de coleta.s
+```
+
+### Classe 'SummarizationUtil'
+
+```
+  Biblioteca auxiliar que compreende funções extras para realizar a
+  sumarização das mídias e mensagens de um certo período.
+
+  Atributos
+  -----------
+  media_type : str
+          Tipo de mídia para gerar a sumarização (images, audios, videos)
+  comparison_method : str
+          Metódo para calcular a similaridade/igualdade entre mídias (
+          checksum, phash, jaccard).
+  start_date : str
+          Data de início da sumarização.
+  end_date : str
+          Data de fim da sumarização.
+  messages_path : str
+          Caminho em que estão salvos os arquivos de coleta por data.
+
+  Métodos
+  -----------
+  generate_media_summarization()
+      Faz a sumarização das mensagens de um certo tipo de mídia. Calcula
+      informações como primeira vez em que a mídia foi compartilhada,
+      quantas vezes foi compartilhada, em que grupos, por quais usuários,
+      etc.
+```
 
 ## Entrada
 
@@ -244,3 +227,35 @@ Abaixo, os parâmetros da entrada necessários para execução do coletor:
   - "content": Texto da mensagem
 
 - video: Armazena os vídeos coletados. O nome dos arquivos é um identificador único gerado pelo Whatsapp
+
+
+## Adendos
+
+Alguns pontos que acho relevante levantar.
+
+### Conversão para Python 3
+
+Inicialmente o código do coletor estava escrito em python2, e como disse, tive problemas para utilizá-lo com versões mais novas da biblioteca.
+
+Dessa forma, eu converti o código fonte para python3 utilizando a biblioteca [futurize](https://python-future.org/futurize.html). Ela passa por todo o código aplicando modificações para que se torne válido em Python 3, e também retro compatível com Python 2.
+
+Além disso, tive que remover a dependência do django, que não possuia as funções de String utilizadas em python 3. No lugar, criei uma função simples que creio que faz a mesma coisa que essas outras funções.
+
+Creio que essas mudanças não quebraram o funcionamento do coletor, mas creio que é válida uma inspeção mais a fundo sobre os possíveis problemas de compatibilidade.
+
+### Outras modificações
+
+No geral, a unica grande mudança que fiz foi comentar a linha que pega os metadados dos grupos, pois não entendi o que ela precisava para funcionar.
+
+Também comentei ou removi algumas linhas que não estavam fazendo nada (no geral por conta do driver do selenium estar rodando no docker agora, e algumas coisas relacionadas a conversão de strings para unicode, que agora já são padrão unicode no python3).
+
+
+## Relatório de instalação (Matheus)
+
+### Problemas Iniciais
+
+Primeiramente, tive problemas para usar a biblioteca de coleta [webwhatsapi](https://github.com/mukulhase/WebWhatsapp-Wrapper) normalmente em um ambiente python em conjunto com o código de coleta do monitor.
+
+Na minha primeira tentativa, criei um ambiente python2 e tentei instalar as bibliotecas necessárias, e já tive um problema aí. Não consegui achar as bibliotecas nas versões necessárias para rodar o código (a versão da lib webwhatsapi disponível no pypi está desatualizada). Mesmo assim, instalei as versões que consegui, e obtive um erro de compatibilidade entre o codigo da api e o selenium.
+
+A partir daí, tentei mudar para um ambiente python3 e usar a versão mais nova da biblioteca, baixando o código fonte direto do github. Para não ter problemas de compatibilidade novamente, tentei usar o docker para encapsular as sessões do selenium e também o código do coletor. Essa foi a abordagem que deu mais certo até então.

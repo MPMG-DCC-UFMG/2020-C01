@@ -43,6 +43,32 @@ def get_days_list(start_date, end_date):
 
 
 class SummarizationUtil:
+    """
+    Biblioteca auxiliar que compreende funções extras para realizar a
+    sumarização das mídias e mensagens de um certo período.
+
+    Atributos
+    -----------
+    media_type : str
+            Tipo de mídia para gerar a sumarização (images, audios, videos)
+    comparison_method : str
+            Metódo para calcular a similaridade/igualdade entre mídias (
+            checksum, phash, jaccard).
+    start_date : str
+            Data de início da sumarização.
+    end_date : str
+            Data de fim da sumarização.
+    messages_path : str
+            Caminho em que estão salvos os arquivos de coleta por data.
+
+    Métodos
+    -----------
+    generate_media_summarization()
+        Faz a sumarização das mensagens de um certo tipo de mídia. Calcula
+        informações como primeira vez em que a mídia foi compartilhada,
+        quantas vezes foi compartilhada, em que grupos, por quais usuários,
+        etc.
+    """
 
     def __init__(self, media_type, comparison_method, start_date, end_date,
                  messages_path="/data/text/"):
@@ -53,6 +79,17 @@ class SummarizationUtil:
         self.messages_path = messages_path
 
     def generate_media_summarization(self, output='default'):
+        """
+        Faz a sumarização das mensagens de um certo tipo de mídia. Calcula
+        informações como primeira vez em que a mídia foi compartilhada,
+        quantas vezes foi compartilhada, em que grupos, por quais usuários,
+        etc.
+
+        Parâmetros
+        ------------
+            output : str
+                Caminho para o arquivo onde será escrita a sumarização.
+        """
         if self.media_type == 'images':
             media = 'image'
             hash_methods = ['checksum', 'phash']
@@ -71,7 +108,8 @@ class SummarizationUtil:
             return
 
         print('Grouping %s hashes of %s from %s to %s' %
-              (self.comparison_method, self.media_type, self.start_date, self.end_date))
+              (self.comparison_method, self.media_type, self.start_date,
+               self.end_date))
 
         hashes = dict()
         for date in get_days_list(self.start_date, self.end_date):
@@ -143,7 +181,7 @@ def main():
                         help="Data de início da sumarização.",
                         required=True)
 
-    parser.add_argument("-e", "--end_date", type=str,
+    parser.add_argument("-e", "--", type=str,
                         help="Data de fim da sumarização.",
                         default=DATE.today().strftime('%Y-%m-%d'))
 
