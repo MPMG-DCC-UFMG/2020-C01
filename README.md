@@ -117,11 +117,11 @@ Define uma biblioteca auxiliar que compreende funções que coletam metadados de
         docker-compose run --rm collector python metadata_groups.py
         """
         
-- process_hashes.py
-   Define uma biblioteca auxiliar que compreende funções necessárias para realizar o hashing das mídias e mensagens de textos baixadas.
+- summarization_util.py
+   Define uma biblioteca auxiliar que compreende funções extras para realizar sumarização das mídias e mensagens de textos de um certo período.
    A execução deste script pode ser realizada da seguinte forma :
         """
-        docker-compose run --rm collector python process_hashes.py        
+        docker-compose run --rm collector python summarization_util.py        
         """
 
 ## Classes 
