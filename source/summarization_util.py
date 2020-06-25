@@ -1,4 +1,3 @@
-from datetime import date as DATE
 from datetime import timedelta
 from datetime import datetime
 from os.path import isfile, join
@@ -168,10 +167,9 @@ class SummarizationUtil:
             json.dump(hashes, json_file, indent=4)
 
         return hashes
-        
-    
-    
-    def generate_text_summarization(self, output='default', min_size=200, threshold=0.75):
+
+    def generate_text_summarization(self, output='default', min_size=200,
+                                    threshold=0.75):
         """
         Faz a sumarização das mensagens de texto. Calcula
         informações como primeira vez em que a mídia foi compartilhada,
@@ -187,13 +185,15 @@ class SummarizationUtil:
             threshold : str
                 Valor mínimo de similariade para o índice de Jaccard para considerar duas mensagens como iguais.
         """
-        if self.media_type == 'text':
+        if self.media_type == 'texts':
             media = 'text'
             hash_methods = ['jaccard']
+        else:
+            print("Type of media not supported.")
+            return
 
         if self.comparison_method not in hash_methods:
-            print("Selected method is not compatible for the type of media.")
-            return
+            print("Selected method is not compatible for the type of media. Using Jaccard instead")
 
         print('Grouping %s of %s from %s to %s' %
               (self.comparison_method, self.media_type, self.start_date,
@@ -210,8 +210,9 @@ class SummarizationUtil:
 
                     kind = message['type']
                     text = message['content']
-                    
-                    if len(text) < min_size: continue
+
+                    if len(text) < min_size:
+                        continue
                     isNew = True
                     mID = message['message_id']
                     hashstring = mID
@@ -222,8 +223,7 @@ class SummarizationUtil:
                             isNew = False
                             hashstring = ID
                             break
-                        
-                
+
                     if isNew:
                         hashes[hashstring] = dict()
                         hashes[hashstring]['first_share'] = message['date']
@@ -244,7 +244,7 @@ class SummarizationUtil:
                     hashes[hashstring]['groups_shared'].add(
                         message['group_name'])
                     hashes[hashstring]['users_shared'].add(message['sender'])
-                    hashes[hashstring]['messages_IDs'].add(message['message_id'])
+                    hashes[hashstring]['messages_IDs'].append(message['message_id'])
                     hashes[hashstring]['messages'].append(message)
                     hashes[hashstring]['total_groups'] = len(
                         hashes[hashstring]['groups_shared'])
@@ -298,7 +298,7 @@ def main():
             util.generate_media_summarization(args.output)
         elif args.media_type in ['texts']:
             util.generate_text_summarization(args.output)
-            
+
     except Exception as e:
         error_time = str(datetime.datetime.now())
         error_msg = str(e).strip()
