@@ -176,7 +176,8 @@ Abaixo, os parâmetros da entrada necessários para execução do coletor:
 - process_video_hashes: Se hashes de vídeos devem ser calculados durante a execução.
 - group_blacklist: Lista de grupos que devem ser excluídos da coleta
 - user_blacklist: Lista de usuários que devem ser excluídos da coleta
-- json: Caminho para um arquivo json de configuração de execução. Individualmente, as opções presentes no arquivo sobescreveram os argumentos de linha de comando, caso eles sejam fornecidos. Caso esse parâmetro seja utilizado, deve-se fornecer um arquivo .json com os parâmetros listados acima, dentro da pasta config
+- json_string: String contendo um json de configuração de execução. Individualmente, as opções presentes no arquivo sobescreveram os argumentos de linha de comando, caso eles sejam fornecidos.
+- json: Caminho para um arquivo json de configuração de execução. Individualmente, as opções presentes no arquivo sobescreveram os argumentos de linha de comando, caso eles sejam fornecidos. Caso esse parâmetro seja utilizado, deve-se fornecer um arquivo .json com os parâmetros listados acima, dentro da pasta config.
 
 ## Saídas
 

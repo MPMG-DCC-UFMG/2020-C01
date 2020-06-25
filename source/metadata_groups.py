@@ -57,6 +57,9 @@ class GroupMetadataCollector():
             with open(args.json) as json_file:
                 json_args = json.load(json_file)
                 args_dict.update(json_args)
+        elif args.json_string:
+            json_args = json.loads(args.json_string)
+            args_dict.update(json_args)
 
         self.group_blacklist = args_dict["group_blacklist"]
 
@@ -183,6 +186,12 @@ def main():
     parser.add_argument("-j", "--json", type=str,
                         help="Caminho para um arquivo json de configuração de "
                         "execução. Individualmente, as opções presentes no "
+                        "arquivo sobescreveram os argumentos de linha de "
+                        "comando, caso eles sejam fornecidos.")
+
+    parser.add_argument("--json_string", type=str,
+                        help="String contendo um json de configuração de"
+                        " execução. Individualmente, as opções presentes no "
                         "arquivo sobescreveram os argumentos de linha de "
                         "comando, caso eles sejam fornecidos.")
 
