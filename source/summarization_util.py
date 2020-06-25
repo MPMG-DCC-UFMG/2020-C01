@@ -270,7 +270,7 @@ def main():
 
     parser.add_argument("-t", "--media_type", type=str,
                         help="Tipo de mídia para gerar a sumarização (images,"
-                        " audios, videos).", required=True)
+                        " audios, videos, 'texts').", required=True)
 
     parser.add_argument("-m", "--comparison_method", type=str,
                         help="Metódo para calcular a similaridade/igualdade"
@@ -296,7 +296,7 @@ def main():
                                  args.start_date, args.end_date)
         if args.media_type in ['audios', 'images', 'videos']:
             util.generate_media_summarization(args.output)
-        elif args.media_type in ['text']:
+        elif args.media_type in ['texts']:
             util.generate_text_summarization(args.output)
             
     except Exception as e:
