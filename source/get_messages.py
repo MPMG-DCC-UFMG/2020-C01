@@ -582,6 +582,7 @@ class WhatsappCollector():
         
         
         while looping:
+        
             if self.collection_mode == 'continuous': looping = True
             else looping = False
             
