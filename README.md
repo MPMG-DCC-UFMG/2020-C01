@@ -194,7 +194,7 @@ Abaixo, os parâmetros da entrada necessários para execução do coletor:
   - "country": País de origem do número que enviou a mensagem,
   - "sender": Número de telefone que enviou a mensagem,
   - "date": Data e hora de envio da mensagem,
-  - "type": Tipo da mensagem, pode ser `text`, `image`, `ptt` **PENDENTE**, `sticker`, `video` ou `audio`.
+  - "type": Tipo da mensagem, pode ser `text`, `image`, `sticker`, `video`, `audio` ou `ptt` (push-to-talk, outra forma de áudio) .
   - "file": Sinaliza se a mensagem vem acompanhada de algum arquivo, com o nome do arquivo armazenado. Caso não a mensagem não tenha um arquivo associado, este campo possui possui "<NoFile>" como valor.
   - "content": Texto da mensagem
   - "checksum": String gerado por checksum. Gerado apenas para mensagens de áudio, vídeo e imagem.
@@ -204,18 +204,30 @@ Abaixo, os parâmetros da entrada necessários para execução do coletor:
 
 - mids: Armazena, por grupo, arquivos que registram o id único de cada mensagem e o horário em que a mensagem foi enviada. Estes arquivos são utiliados para retomar a coleta da última mensagem coletada, para evitar duplicatas e acelerar a execução
 
-- notifications: Uma notificação é gerada quando um usuário entra/sai de um grupo, ou muda de nome. Nesta pasta, é armazenado, para grupo, um arquivo .json com as seguintes informações, para cada notificação do grupo:
 
-  - "message_id": identificador único da mensagem,
-  - "group_id": identificador único do grupo,
-  - "timestamp": [Unix time](https://en.wikipedia.org/wiki/Unix_time) de quando a notificação ocorreu,
-  - "date": Data e horário de quando a notificação ocorreu,
-  - "sender": **PENDENTE**,
-  - "type": **PENDENTE**,
-  - "subtype": **PENDENTE**,
-  - "contact_name": Nome do grupo onde ocorreu a notificação,
-  - "from": **PENDENTE**,
-  - "recipient": **PENDENTE**
+- notifications: notificações são as atividades internas no grupo que modificam de alguma forma em sua estrutura. Uma notificação é gerada, por exemplo, quando um usuário entra/sai ou é adicionado/removido de um grupo, quando alguém modifica o título, imagem ou descrição do grupo ou outras atividades do tipo mais estruturais. Nesta pasta, é armazenado, para grupo, um arquivo .json com as seguintes informações, para cada notificação do grupo:
+  - "message_id": identificador unico da mensagem,
+  - "group_id": identificador unico do grupo,
+  - "timestamp": [Unix time](https://en.wikipedia.org/wiki/Unix_time) de quando a notificacao ocorreu,
+  - "date": Data e horario de quando a notificacao ocorreu,
+  - "sender": Usuário autor da notificação,
+  - "type": Tipo da notificação, dado pelo próprio sistema do WhatsApp. esses tipos podem ser: 
+
+        - "call_log": notificações relacionadas com ligação;
+        - "e2e_notification: notificações relacionadas a criptografia
+        - "gp2": notificação de movimentação nos grupos
+  - "subtype": Qual tipo de notificação aconteceu. É uma especificação do campo anterior, dando mais detalhes do tipo de notificação. Este campo pode conter os seguintes valores:,
+        - "miss":  notifiacação para chamadas perdidas.
+        - "encrypt": notificação sobre criptografia da mensagem.
+        - "invite":  notificação de quando um novo usuário entra a partir do link de convite do grupo.
+        - "create":  notificação informado a criação do grupo.
+        - "add": notificação indicando que um novo usuário foi adicionado ao grupo por algum administrador.
+        - "remove": notificação indicando que algum membro foi removido (banido) do grupo por algum administrador.
+        - "leave": notificação indicando que algum usuário deixou o grupo.
+        - "description": notificação informando que algum membro modificou a descrição do grupo.
+  - "contact": Nome do grupo onde ocorreu a notificacao,
+  - "recipient":Usuário alvo da notificação (utilizado para notificações de adição, remoção de membros do grupo),
+  - "from": Número de celular de quem recebeu a notificação. (O próprio celular usado na coleta).
 
 - text: Dentro desta pasta, são armazenados arquivos com todas as mensagems coletas, separadas por dia. Cada dia tem seu próprio arquivo, seguindo o padrão `AllMessages_YYYY_MM_DD.txt`. Dentro destes arquivos, cada linha é um objeto json que representa uma mensagem. Nestes objetos, estão armazenadas as seguintes informações:
 
@@ -225,7 +237,7 @@ Abaixo, os parâmetros da entrada necessários para execução do coletor:
   - "country": País de origem do número que enviou a mensagem,
   - "sender": Número de telefone que enviou a mensagem,
   - "date": Data e hora de envio da mensagem,
-  - "type": Tipo da mensagem, pode ser `text`, `image`, `ptt` **PENDENTE**, `sticker`, `video` ou `audio`.
+  - "type": Tipo da mensagem, pode ser `text`, `image`, `sticker`, `video`, `audio` ou `ptt` (push-to-talk, outra forma de áudio).
   - "file": Sinaliza se a mensagem vem acompanhada de algum arquivo, com o nome do arquivo armazenado. Caso não a mensagem não tenha um arquivo associado, este campo possui possui "<NoFile>" como valor.
   - "content": Texto da mensagem
 
