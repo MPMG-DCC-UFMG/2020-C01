@@ -136,6 +136,7 @@ class SummarizationUtil:
                             hashes[hash]['total_users'] = 0
                             hashes[hash]['groups_shared'] = set()
                             hashes[hash]['users_shared'] = set()
+                            hashes[hash]['filenames'] = set()
                             hashes[hash]['messages'] = list()
 
                         # ADD MESSAGE TO HASH
@@ -145,6 +146,7 @@ class SummarizationUtil:
                         hashes[hash]['groups_shared'].add(
                             message['group_name'])
                         hashes[hash]['users_shared'].add(message['sender'])
+                        hashes[hash]['filenames'].add(message['file'])
                         hashes[hash]['messages'].append(message)
                         hashes[hash]['total_groups'] = len(
                             hashes[hash]['groups_shared'])
