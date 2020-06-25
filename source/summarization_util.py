@@ -75,6 +75,8 @@ class SummarizationUtil:
         self.media_type = media_type
         self.comparison_method = comparison_method
         self.start_date = start_date
+        if end_date == 'no_end_date':
+            end_date = start_date
         self.end_date = end_date
         self.messages_path = messages_path
 
@@ -157,6 +159,102 @@ class SummarizationUtil:
         for hash in hashes:
             hashes[hash]["groups_shared"] = list(hashes[hash]["groups_shared"])
             hashes[hash]["users_shared"] = list(hashes[hash]["users_shared"])
+            hashes[hash]["filenames"] = list(hashes[hash]["filenames"])
+
+        if output == 'default':
+            output = '/data/merged_data_%s-%s_%s-%s.json' % \
+                (media, self.comparison_method, self.start_date, self.end_date)
+        with open(output, 'w') as json_file:
+            json.dump(hashes, json_file, indent=4)
+
+        return hashes
+        
+    
+    
+    def generate_text_summarization(self, output='default', min_size=200, threshold=0.75):
+        """
+        Faz a sumarização das mensagens de texto. Calcula
+        informações como primeira vez em que a mídia foi compartilhada,
+        quantas vezes foi compartilhada, em que grupos, por quais usuários,
+        etc.
+
+        Parâmetros
+        ------------
+            output : str
+                Caminho para o arquivo onde será escrita a sumarização.
+            min_size : str
+                Tamanho mínimo do texto das mensagens agrupadas.
+            threshold : str
+                Valor mínimo de similariade para o índice de Jaccard para considerar duas mensagens como iguais.
+        """
+        if self.media_type == 'text':
+            media = 'text'
+            hash_methods = ['jaccard']
+
+        if self.comparison_method not in hash_methods:
+            print("Selected method is not compatible for the type of media.")
+            return
+
+        print('Grouping %s of %s from %s to %s' %
+              (self.comparison_method, self.media_type, self.start_date,
+               self.end_date))
+
+        hashes = dict()
+        for date in get_days_list(self.start_date, self.end_date):
+            json_filename = 'AllMessages_%s.txt' % (date)
+            if not isfile(join(self.messages_path, json_filename)):
+                continue
+            with open(join(self.messages_path, json_filename), 'r') as fdata:
+                for line in fdata:
+                    message = json.loads(line.strip())
+
+                    kind = message['type']
+                    text = message['content']
+                    
+                    if len(text) < min_size: continue
+                    isNew = True
+                    mID = message['message_id']
+                    hashstring = mID
+                    for ID in hashes.keys():
+                        text2 = hashes[ID]['text']
+                        score = compare_texts(text, text2)
+                        if score >= threshold:
+                            isNew = False
+                            hashstring = ID
+                            break
+                        
+                
+                    if isNew:
+                        hashes[hashstring] = dict()
+                        hashes[hashstring]['first_share'] = message['date']
+                        hashes[hashstring]['total'] = 0
+                        hashes[hashstring]['total_groups'] = 0
+                        hashes[hashstring]['total_users'] = 0
+                        hashes[hashstring]['groups_shared'] = set()
+                        hashes[hashstring]['users_shared'] = set()
+                        hashes[hashstring]['messages_IDs'] = list()
+                        hashes[hashstring]['filenames'] = list()
+                        hashes[hashstring]['text'] = text
+                        hashes[hashstring]['messages'] = list()
+
+                    # ADD MESSAGE TO HASH
+                    if message['date'] < hashes[hashstring]['first_share']:
+                        hashes[hashstring]['first_share'] = message['date']
+                    hashes[hashstring]['total'] += 1
+                    hashes[hashstring]['groups_shared'].add(
+                        message['group_name'])
+                    hashes[hashstring]['users_shared'].add(message['sender'])
+                    hashes[hashstring]['messages_IDs'].add(message['message_id'])
+                    hashes[hashstring]['messages'].append(message)
+                    hashes[hashstring]['total_groups'] = len(
+                        hashes[hashstring]['groups_shared'])
+                    hashes[hashstring]['total_users'] = len(
+                        hashes[hashstring]['users_shared'])
+
+        # Convert sets to lists
+        for hash in hashes.keys():
+            hashes[hash]["groups_shared"] = list(hashes[hash]["groups_shared"])
+            hashes[hash]["users_shared"] = list(hashes[hash]["users_shared"])
 
         if output == 'default':
             output = '/data/merged_data_%s-%s_%s-%s.json' % \
@@ -183,9 +281,13 @@ def main():
                         help="Data de início da sumarização.",
                         required=True)
 
-    parser.add_argument("-e", "--", type=str,
+    parser.add_argument("-e", "--end_date", type=str,
                         help="Data de fim da sumarização.",
-                        default=DATE.today().strftime('%Y-%m-%d'))
+                        default='no_end_date')
+
+    parser.add_argument("-o", "--output", type=str,
+                        help="Arquivo de saída para as mensagens salvas",
+                        default='default')
 
     args = parser.parse_args()
 
@@ -193,7 +295,10 @@ def main():
         util = SummarizationUtil(args.media_type, args.comparison_method,
                                  args.start_date, args.end_date)
         if args.media_type in ['audios', 'images', 'videos']:
-            util.generate_media_summarization()
+            util.generate_media_summarization(args.output)
+        elif args.media_type in ['text']:
+            util.generate_text_summarization(args.output)
+            
     except Exception as e:
         error_time = str(datetime.datetime.now())
         error_msg = str(e).strip()
