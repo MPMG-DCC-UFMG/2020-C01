@@ -14,7 +14,7 @@ RUN python -mpip install numpy
 RUN pip install --trusted-host pypi.python.org -r requirements.txt
 
 # Install webwhatsappapi lib
-RUN pip install "git+https://github.com/matheusfebarbosa/WebWhatsapp-Wrapper.git@23f278a417bae382380970125da49bb91e5fa215"
+RUN pip install "git+https://github.com/matheusfebarbosa/WebWhatsapp-Wrapper.git@b66bfa81e2fc6e2375e9a3b522e0030907931e27"
 
 # COPY the source code
 COPY source /app

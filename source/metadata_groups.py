@@ -92,8 +92,7 @@ class GroupMetadataCollector():
                 Caminho para um profile alternativo do navegador
                 utilizado na coleta.
         """
-        
-        
+
         if not os.path.exists(profile_path):
             os.makedirs(profile_path)
 
@@ -160,14 +159,13 @@ class GroupMetadataCollector():
                 group['title'] = name
                 group['members'] = participants
                 group['admins'] = admins
-                
+
                 path = '/data/metadata/'
                 filename = '%s%s.json' % (path, _id)
                 print(group)
-                with open(filename, 'a') as json_file:
+                with open(filename, 'w') as json_file:
                     json.dump(group, json_file)
                     print('', file=json_file)
-                
 
             driver.close()
         except Exception as e:
