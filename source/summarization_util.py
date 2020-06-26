@@ -282,7 +282,7 @@ def main():
                         required=True)
 
     parser.add_argument("-e", "--end_date", type=str,
-                        help="Data de fim da sumarização.",
+                        help="Data de fim da sumarização. Se ausente a sumarização ocorrerá apenas para as mensagens da data de início",
                         default='no_end_date')
 
     parser.add_argument("-o", "--output", type=str,

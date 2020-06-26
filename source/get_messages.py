@@ -102,10 +102,18 @@ class WhatsappCollector():
         elif args.json_string:
             json_args = json.loads(args.json_string)
             args_dict.update(json_args)
-
+        
+        if args_dict["collection_mode"] not in ['continuous', 'period', 'unread']:
+            print('Collection mode invalid <%s>!! Using <continuous> instead'%(args_dict["collection_mode"]))
+            args_dict["collection_mode"] = 'continuous'
+        if args_dict["write_mode"] not in ['both', 'day', 'group']:
+            print('Save mode invalid <%s>!! Using <both> instead'%(args_dict["write_mode"]))
+            args_dict["write_mode"] = 'both'
+        
         self.collection_mode       = args_dict["collection_mode"]
         self.start_date            = args_dict["start_date"]
         self.end_date              = args_dict["end_date"]
+        self.write_mode              = args_dict["write_mode"]
         self.group_blacklist       = args_dict["group_blacklist"]
         self.user_blacklist        = args_dict["user_blacklist"]
         self.collect_messages      = args_dict["collect_messages"]
@@ -520,15 +528,17 @@ class WhatsappCollector():
         print(messageLine)
 
         # Save message on group ID file
-        message_group_filename = '/data/groupID/%s.json' % (gid)
-        with open(message_group_filename, 'a') as json_file:
-            json.dump(item, json_file)
-            print('', file=json_file)
+        if self.write_mode == 'group' or self.write_mode == 'both':
+            message_group_filename = '%s%s.json' % (msg_id_path, gid)
+            with open(message_group_filename, 'a') as json_file:
+                json.dump(item, json_file)
+                print('', file=json_file)
+        if self.write_mode == 'day' or self.write_mode == 'both':
         message_day_filename = file_name
-        # Save message on file for all messages of the day
-        with open(message_day_filename, 'a') as json_file:
-            json.dump(item, json_file)
-            print('', file=json_file)
+            # Save message on file for all messages of the day
+            with open(message_day_filename, 'a') as json_file:
+                json.dump(item, json_file)
+                print('', file=json_file)
         reference_mid_filename = '/data/mids/%s.txt' % (gid)
         # Save mid reference for future checks
         with open(reference_mid_filename, 'a') as fmid:
@@ -565,178 +575,187 @@ class WhatsappCollector():
         min_date = self.start_date
         max_date = self.end_date
         include_notf = self.collect_notifications
-
+        looping = True
         if (self.collection_mode == 'period') and (min_date < '2020-01-01'):
             raise Exception("Can't start collection without a start and end"
                             " date.")
+        
+        
+        while looping:
+        
+            if self.collection_mode == 'continuous': looping = True
+            else looping = False
+            
+            try:
+                print("Waiting for QR")
+                driver.wait_for_login()
+                print("Saving session")
+                driver.save_firefox_profile(remove_old=False)
+                print("Bot started")
 
-        try:
-            print("Waiting for QR")
-            driver.wait_for_login()
-            print("Saving session")
-            driver.save_firefox_profile(remove_old=False)
-            print("Bot started")
+                print('>>>>>>>>>>> Loading previous saved Messages')
+                messagesID = self._get_load_messages()
+                notificationsID = self._get_load_notifications()
 
-            print('>>>>>>>>>>> Loading previous saved Messages')
-            messagesID = self._get_load_messages()
-            notificationsID = self._get_load_notifications()
+                today_date = datetime.date.today().strftime("%Y_%m_%d")
+                today_date = 'test'
+                date_format = "%Y-%m-%d"
+                file_name = "/data/AllMessages_" + today_date + ".txt"
+                start_date = min_date
 
-            today_date = datetime.date.today().strftime("%Y_%m_%d")
-            today_date = 'test'
-            date_format = "%Y-%m-%d"
-            file_name = "/data/AllMessages_" + today_date + ".txt"
-            start_date = min_date
+                print('>>>>>>>>>>>>Getting Groups Messages...', end=' ')
+                chats = driver.get_all_chats()
+                count = 0
+                all_chats = list(chats)
 
-            print('>>>>>>>>>>>>Getting Groups Messages...', end=' ')
-            chats = driver.get_all_chats()
-            count = 0
-            all_chats = list(chats)
+                print(' DONE! %d chats loaded!' % (len(all_chats)))
+                random.shuffle(all_chats)
 
-            print(' DONE! %d chats loaded!' % (len(all_chats)))
-            random.shuffle(all_chats)
-
-            for chat in (all_chats):
-                # Does not collect direct messages, only group chats
-                if not chat._js_obj['isGroup']:
-                    continue
-
-                gid = chat.id
-                gid = gid.split('@')[0]
-                s_name = self._process_string(chat.name)
-
-                # Skip group if it is on blacklist (can be name or groupID)
-                if (s_name in self.group_blacklist or
-                        gid in self.group_blacklist):
-                    continue
-
-                # PRINT CHAT INFORMATION
-                members = chat._js_obj['groupMetadata']['participants']
-                timestamp = gid.split('-')[-1]
-                date = convert_data_from_timestamp(float(timestamp))
-                str_date = date.strftime('%Y-%m-%d %H:%M:%S')
-
-                chat_print = "<Group chat - {name}: {id}, {participants} " \
-                    "participants - at {time}!!>".format(
-                        name=s_name, id=gid, participants=len(members),
-                        time=str_date)
-                print('>>>>>Loading messages from', chat_print)
-
-                if gid not in messagesID:
-                    messagesID[gid] = dict()
-                    messagesID[gid]['messages'] = set()
-                    messagesID[gid]['date'] = '2000-01-01'
-
-                # PROCESS PREVIOUS LOADED MESSAGES ID AND LAST DATE
-                if self.collection_mode == 'continuous':
-                    if messagesID[gid]['date'] > max_date:
+                for chat in (all_chats):
+                    # Does not collect direct messages, only group chats
+                    if not chat._js_obj['isGroup']:
                         continue
-                    if messagesID[gid]['date'] > min_date:
-                        start_date = messagesID[gid]['date']
-                        till_date = datetime.datetime.strptime(start_date,
-                                                               date_format)
-                    else:
-                        start_date = min_date
-                        till_date = datetime.datetime.strptime(start_date,
-                                                               date_format)
 
-                    # LOAD MESSAGES FROM WHATSAPP SINCE MIN_DATE
-                    messages = chat.load_earlier_messages_till(till_date)
-                    messages = driver.get_all_message_ids_in_chat(
-                        chat, include_notifications=include_notf)
-
-                elif self.collection_mode == 'period':
-                    till_date = datetime.datetime.strptime(start_date,
-                                                           date_format)
-                    # LOAD MESSAGES FROM WHATSAPP SINCE MIN_DATE
-                    messages = chat.load_earlier_messages_till(till_date)
-                    messages = driver.get_all_message_ids_in_chat(
-                        chat, include_notifications=include_notf)
-
-                elif self.collection_mode == 'unread':
-                    # LOAD UNREAD MESSAGES FROM WHATSAPP
-                    messages = chat.get_unread_messages(
-                        include_me=False, include_notifications=include_notf)
-
-                print('>>>>>Total messages %d' % (len(messages)))
-                count += 1
-
-                for msg in messages:
-                    count += 1
+                    gid = chat.id
                     gid = gid.split('@')[0]
-                    mid = msg
+                    s_name = self._process_string(chat.name)
 
-                    if self._is_notification(mid):
-                        if gid not in notificationsID.keys():
-                            notificationsID[gid] = set()
-                        if mid.strip() in notificationsID[gid]:
+                    # Skip group if it is on blacklist (can be name or groupID)
+                    if (s_name in self.group_blacklist or
+                            gid in self.group_blacklist):
+                        continue
+
+                    # PRINT CHAT INFORMATION
+                    members = chat._js_obj['groupMetadata']['participants']
+                    timestamp = gid.split('-')[-1]
+                    date = convert_data_from_timestamp(float(timestamp))
+                    str_date = date.strftime('%Y-%m-%d %H:%M:%S')
+
+                    chat_print = "<Group chat - {name}: {id}, {participants} " \
+                        "participants - at {time}!!>".format(
+                            name=s_name, id=gid, participants=len(members),
+                            time=str_date)
+                    print('>>>>>Loading messages from', chat_print)
+
+                    if gid not in messagesID:
+                        messagesID[gid] = dict()
+                        messagesID[gid]['messages'] = set()
+                        messagesID[gid]['date'] = '2000-01-01'
+
+                    # PROCESS PREVIOUS LOADED MESSAGES ID AND LAST DATE
+                    if self.collection_mode == 'continuous':
+                        if messagesID[gid]['date'] > max_date:
                             continue
-                        j = driver.get_message_by_id(mid)
-                        self._save_notification_(j, gid)
-                        continue
+                        if messagesID[gid]['date'] > min_date:
+                            start_date = messagesID[gid]['date']
+                            till_date = datetime.datetime.strptime(start_date,
+                                                                   date_format)
+                        else:
+                            start_date = min_date
+                            till_date = datetime.datetime.strptime(start_date,
+                                                                   date_format)
 
-                    if mid.strip() in messagesID[gid]['messages']:
-                        print('Message: %d >>> %s from %s was CHECKED' %
-                              (count, mid, gid))
-                        continue
+                        # LOAD MESSAGES FROM WHATSAPP SINCE MIN_DATE
+                        messages = chat.load_earlier_messages_till(till_date)
+                        messages = driver.get_all_message_ids_in_chat(
+                            chat, include_notifications=include_notf)
 
-                    else:
-                        try:
+                    elif self.collection_mode == 'period':
+                        till_date = datetime.datetime.strptime(start_date,
+                                                               date_format)
+                        # LOAD MESSAGES FROM WHATSAPP SINCE MIN_DATE
+                        messages = chat.load_earlier_messages_till(till_date)
+                        messages = driver.get_all_message_ids_in_chat(
+                            chat, include_notifications=include_notf)
+
+                    elif self.collection_mode == 'unread':
+                        # LOAD UNREAD MESSAGES FROM WHATSAPP
+                        messages = chat.get_unread_messages(
+                            include_me=False, include_notifications=include_notf)
+
+                    print('>>>>>Total messages %d' % (len(messages)))
+                    count += 1
+
+                    for msg in messages:
+                        count += 1
+                        gid = gid.split('@')[0]
+                        mid = msg
+
+                        if self._is_notification(mid):
+                            if gid not in notificationsID.keys():
+                                notificationsID[gid] = set()
+                            if mid.strip() in notificationsID[gid]:
+                                continue
                             j = driver.get_message_by_id(mid)
-                        except Exception as e:
-                            print('Error getting a message >>', e)
-                            continue
-                        if not j:
+                            self._save_notification_(j, gid)
                             continue
 
-                    sender = j.sender.id
-                    sender = sender.replace(' ', '').strip()
-                    sender = sender.split('@')[0]
-                    if (sender in self.user_blacklist or
-                            '+' + sender in self.user_blacklist):
-                        continue
+                        if mid.strip() in messagesID[gid]['messages']:
+                            print('Message: %d >>> %s from %s was CHECKED' %
+                                  (count, mid, gid))
+                            continue
 
-                    try:
-                        date = self._get_date_from_message(j)
-                    except Exception:
-                        continue
+                        else:
+                            try:
+                                j = driver.get_message_by_id(mid)
+                            except Exception as e:
+                                print('Error getting a message >>', e)
+                                continue
+                            if not j:
+                                continue
 
-                    if (date > max_date) and (self.collection_mode == 'period'):
-                        break
-                    if (date < start_date):
-                        continue
+                        sender = j.sender.id
+                        sender = sender.replace(' ', '').strip()
+                        sender = sender.split('@')[0]
+                        if (sender in self.user_blacklist or
+                                '+' + sender in self.user_blacklist):
+                            continue
 
-                    # Update day
-                    if today_date != date:
-                        today_date = date
-                        file_name = "/data/text/AllMessages_" + today_date + \
-                            ".txt"
-
-                    if self.collect_images:
                         try:
-                            self._get_image_from_message(j)
-                        except Exception as ei:
-                            print('!!!!Error getting image!!!! ', ei)
+                            date = self._get_date_from_message(j)
+                        except Exception:
+                            continue
 
-                    if self.collect_videos:
-                        try:
-                            self._get_video_from_message(j)
-                        except Exception as ev:
-                            print('!!!!Error getting video!!!! ', ev)
+                        if (date > max_date) and (self.collection_mode == 'period'):
+                            break
+                        if (date < start_date):
+                            continue
 
-                    if self.collect_audios:
-                        try:
-                            self._get_audio_from_message(j)
-                        except Exception as ea:
-                            print('!!!!Error getting audio!!!! ', ea)
+                        # Update day
+                        if today_date != date:
+                            today_date = date
+                            file_name = "/data/text/AllMessages_" + today_date + \
+                                ".txt"
 
-                    if self.collect_messages:
-                        self._save_message(j, s_name, gid, mid, file_name)
+                        if self.collect_images:
+                            try:
+                                self._get_image_from_message(j)
+                            except Exception as ei:
+                                print('!!!!Error getting image!!!! ', ei)
 
-            driver.close()
-        except Exception as e:
-            print(e)
-            driver.close()
-            raise Exception(e)
+                        if self.collect_videos:
+                            try:
+                                self._get_video_from_message(j)
+                            except Exception as ev:
+                                print('!!!!Error getting video!!!! ', ev)
+
+                        if self.collect_audios:
+                            try:
+                                self._get_audio_from_message(j)
+                            except Exception as ea:
+                                print('!!!!Error getting audio!!!! ', ea)
+
+                        if self.collect_messages:
+                            self._save_message(j, s_name, gid, mid, file_name)
+
+                driver.close()
+            except Exception as e:
+                print(e)
+                driver.close()
+                raise Exception(e)
+            if looping:
+                print('Waiting code to start again...')
+                time.sleep(3600)
 
 
 def main():
@@ -754,6 +773,9 @@ def main():
     parser.add_argument("-e", "--end_date", type=str,
                         help="Data de término do período de coleta (Modo"
                         " \'period\').", default='2999-12-31')
+
+    parser.add_argument("-w", "--write_mode", type=str,
+                        help="Modo de salvamento das mensagens no arquivos de saída(\'both\', \'day\', \'group\'). ", default='2999-12-31')
 
     parser.add_argument("--collect_messages", type=bool,
                         help="Se mensagens de texto devem ser coletadas"
@@ -818,7 +840,6 @@ def main():
         with open('/data/log.txt', 'w') as ferror:
             print("%s >> Error:\t%s" % (error_time, error_msg))
             print("%s >> Error:\t%s" % (error_time, error_msg), file=ferror)
-        time.sleep(1500)
 
 
 if __name__ == '__main__':
