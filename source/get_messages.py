@@ -95,7 +95,7 @@ class WhatsappCollector():
         """
         args_dict = vars(args)
 
-        if args.json:
+        if args:
             with open(args.json) as json_file:
                 json_args = json.load(json_file)
                 args_dict.update(json_args)
@@ -154,8 +154,9 @@ class WhatsappCollector():
             filename : str
                 Nome original do arquivo.
         """
+        date = self._get_date_from_message(message).split(' ')[0]
         mediaID = message.id.split('.')[-1]
-        filename = '%s_%s_%s.%s' % (message.type, filename.split('.')[0],
+        filename = '%s/%s_%s_%s.%s' % (date, message.type, filename.split('.')[0],
                                     mediaID, filename.split('.')[-1])
         return filename
 
@@ -171,10 +172,15 @@ class WhatsappCollector():
                 Caminho para a pasta onde o arquivo será salvo.
         """
         if message.type == 'image':
+            date = self._get_date_from_message(message).split(' ')[0]
+            out_folder = path+date+'/'
+            pathlib.Path(out_folder).mkdir(parents=True, exist_ok=True)
+            
             filename = self._generate_unique_filename(
                 message, message.filename)
             message.filename = filename
             if not os.path.isfile(path+filename):
+                
                 message.save_media(path, force_download=True)
 
     def _get_video_from_message(self, message, path='/data/video/'):
@@ -189,6 +195,10 @@ class WhatsappCollector():
                 Caminho para a pasta onde o arquivo será salvo.
         """
         if message.type == 'video':
+            date = self._get_date_from_message(message).split(' ')[0]
+            out_folder = path+date+'/'
+            pathlib.Path(out_folder).mkdir(parents=True, exist_ok=True)
+            
             filename = self._generate_unique_filename(
                 message, message.filename)
             message.filename = filename
@@ -206,7 +216,10 @@ class WhatsappCollector():
             path : str
                 Caminho para a pasta onde o arquivo será salvo.
         """
-        if message.type == 'audio':
+        if message.type == 'audio' or message.type == 'ptt':
+            date = self._get_date_from_message(message).split(' ')[0]
+            out_folder = path+date+'/'
+            pathlib.Path(out_folder).mkdir(parents=True, exist_ok=True)
             filename = self._generate_unique_filename(
                 message, message.filename)
             message.filename = filename
@@ -362,17 +375,18 @@ class WhatsappCollector():
                 alert = readable[message.type][message.subtype]
             except KeyError as e:
                 alert = 'Other'
-
+            
+            all_notification_filename = 'data/all_notifications.json'
             notification = dict()
             notification['message_id'] = str(message.id)
             notification['group_id'] = gid
-            notification['type'] = msgtype
-            notification['subtype'] = msgtype
-            notification['timestamp'] = timestamp
-            notification['date'] = date
+            notification['activity_msg'] = msgtype
+            notification['notification_type'] = msgtype
+            notification['notification_timestamp'] = timestamp
+            notification['notification_date'] = date
             notification['sender'] = sender_user
-            notification['contact_name'] = name
-            notification['from'] = from_user
+            notification['contact'] = name
+            notification['received_by'] = from_user
 
             if message._js_obj['recipients']:
                 for item in message._js_obj['recipients']:
@@ -389,6 +403,9 @@ class WhatsappCollector():
                     with open(filename, 'a') as json_file:
                         json.dump(notification, json_file)
                         print('', file=json_file)
+                    with open(all_notification_filename, 'a') as json_file:
+                        json.dump(notification, json_file)
+                        print('', file=json_file)
 
             else:
                 try:
@@ -402,6 +419,9 @@ class WhatsappCollector():
                 print(finalstring)
                 filename = '%s%s.json' % (path, gid)
                 with open(filename, 'a') as json_file:
+                    json.dump(notification, json_file)
+                    print('', file=json_file)
+                with open(all_notification_filename, 'a') as json_file:
                     json.dump(notification, json_file)
                     print('', file=json_file)
 
@@ -464,7 +484,7 @@ class WhatsappCollector():
         date = smart_str(date.replace(' ', '\t').strip())
 
         filename = '<NoFile>'
-        mediatype = 'text'
+        mediatype = 'application/json'
         if (isinstance(message,  MESSAGE.MediaMessage) or
                 isinstance(message, MESSAGE.MMSMessage)):
             mediatype = smart_str(message.type)
@@ -475,7 +495,8 @@ class WhatsappCollector():
                 filename = '<NoFile>'
             if hasattr(message, 'caption'):
                 content = smart_str(message.caption)
-
+        
+        if 'text' in mediatype: mediatype = 'application/json'
         phash = ''
         checksum = ''
 
@@ -508,11 +529,10 @@ class WhatsappCollector():
         item['message_id'] = mid
         item['group_id'] = gid
         item['group_name'] = group_name
-        item['group_name'] = group_name
         item['country'] = country
         item['sender'] = smart_str(sender)
-        item['date'] = smart_str(date)
-        item['type'] = mediatype
+        item['data'] = smart_str(date)
+        item['mediatype'] = mediatype
         item['file'] = smart_str(filename)
         item['content'] = smart_str(content)
         if (mediatype == 'video' or mediatype == 'image'
@@ -587,7 +607,7 @@ class WhatsappCollector():
             else looping = False
             
             try:
-                print("Waiting for QR")
+                print("Waiting for WhatsApp Web Login")
                 driver.wait_for_login()
                 print("Saving session")
                 driver.save_firefox_profile(remove_old=False)
