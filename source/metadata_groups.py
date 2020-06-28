@@ -92,7 +92,13 @@ class GroupMetadataCollector():
                 Caminho para um profile alternativo do navegador
                 utilizado na coleta.
         """
-
+        
+        today = datetime.date.today().strftime('%Y-%m-%d')
+        all_groups_filename = '/data/all_groups_%s.json' %(today)
+        with open(all_groups_filename, 'w') as json_file:
+            print('Collecting metadata for groups at %s'%(today)) 
+ 
+ 
         if not os.path.exists(profile_path):
             os.makedirs(profile_path)
 
@@ -101,7 +107,7 @@ class GroupMetadataCollector():
             command_executor=os.environ["SELENIUM"])
 
         try:
-            print("Waiting for QR")
+            print("Waiting for WhatsApp Web Login")
             driver.wait_for_login()
             print("Saving session")
             driver.save_firefox_profile(remove_old=False)
@@ -154,16 +160,18 @@ class GroupMetadataCollector():
                 group['creator'] = creator
                 group['kind'] = kind
                 group['creation'] = dict()
-                group['creation']['date'] = str_date
-                group['creation']['timestamp'] = timestamp
+                group['creation']['creation_date'] = str_date
+                group['creation']['creation_timestamp'] = timestamp
                 group['title'] = name
                 group['members'] = participants
-                group['admins'] = admins
-
+                
                 path = '/data/metadata/'
                 filename = '%s%s.json' % (path, _id)
                 print(group)
                 with open(filename, 'w') as json_file:
+                    json.dump(group, json_file)
+                    print('', file=json_file)
+                with open(all_groups_filename, 'a') as json_file:
                     json.dump(group, json_file)
                     print('', file=json_file)
 
