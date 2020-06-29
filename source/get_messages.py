@@ -381,7 +381,7 @@ class WhatsappCollector():
             notification['message_id'] = str(message.id)
             notification['group_id'] = gid
             notification['activity_msg'] = msgtype
-            notification['notification_type'] = msgtype
+            notification['notification_type'] = subtype
             notification['notification_timestamp'] = timestamp
             notification['notification_date'] = date
             notification['sender'] = sender_user
