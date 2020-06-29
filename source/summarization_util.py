@@ -121,17 +121,20 @@ class SummarizationUtil:
                 for line in fdata:
                     message = json.loads(line.strip())
 
-                    kind = message['type']
+                    kind = message['mediatype']
 
                     if media == kind:
                         if (media == 'image' or media == 'video' or
                                 media == 'audio'):
                             hash = message[self.comparison_method]
 
+                        if hash == "":
+                            continue
+
                         if hash not in hashes:
                             hashes[hash] = dict()
                             hashes[hash][self.comparison_method] = hash
-                            hashes[hash]['first_share'] = message['date']
+                            hashes[hash]['first_share'] = message['data']
                             hashes[hash]['total'] = 0
                             hashes[hash]['total_groups'] = 0
                             hashes[hash]['total_users'] = 0
@@ -141,8 +144,8 @@ class SummarizationUtil:
                             hashes[hash]['messages'] = list()
 
                         # ADD MESSAGE TO HASH
-                        if message['date'] < hashes[hash]['first_share']:
-                            hashes[hash]['first_share'] = message['date']
+                        if message['data'] < hashes[hash]['first_share']:
+                            hashes[hash]['first_share'] = message['data']
                         hashes[hash]['total'] += 1
                         hashes[hash]['groups_shared'].add(
                             message['group_name'])
@@ -183,7 +186,8 @@ class SummarizationUtil:
             min_size : str
                 Tamanho mínimo do texto das mensagens agrupadas.
             threshold : str
-                Valor mínimo de similariade para o índice de Jaccard para considerar duas mensagens como iguais.
+                Valor mínimo de similariade para o índice de Jaccard para
+                considerar duas mensagens como iguais.
         """
         if self.media_type == 'texts':
             media = 'text'
@@ -193,7 +197,8 @@ class SummarizationUtil:
             return
 
         if self.comparison_method not in hash_methods:
-            print("Selected method is not compatible for the type of media. Using Jaccard instead")
+            print("Selected method is not compatible for the type of media. "
+                  "Using Jaccard instead")
 
         print('Grouping %s of %s from %s to %s' %
               (self.comparison_method, self.media_type, self.start_date,
@@ -208,7 +213,6 @@ class SummarizationUtil:
                 for line in fdata:
                     message = json.loads(line.strip())
 
-                    kind = message['type']
                     text = message['content']
 
                     if len(text) < min_size:
@@ -226,7 +230,7 @@ class SummarizationUtil:
 
                     if isNew:
                         hashes[hashstring] = dict()
-                        hashes[hashstring]['first_share'] = message['date']
+                        hashes[hashstring]['first_share'] = message['data']
                         hashes[hashstring]['total'] = 0
                         hashes[hashstring]['total_groups'] = 0
                         hashes[hashstring]['total_users'] = 0
@@ -238,8 +242,8 @@ class SummarizationUtil:
                         hashes[hashstring]['messages'] = list()
 
                     # ADD MESSAGE TO HASH
-                    if message['date'] < hashes[hashstring]['first_share']:
-                        hashes[hashstring]['first_share'] = message['date']
+                    if message['data'] < hashes[hashstring]['first_share']:
+                        hashes[hashstring]['first_share'] = message['data']
                     hashes[hashstring]['total'] += 1
                     hashes[hashstring]['groups_shared'].add(
                         message['group_name'])
@@ -282,7 +286,9 @@ def main():
                         required=True)
 
     parser.add_argument("-e", "--end_date", type=str,
-                        help="Data de fim da sumarização. Se ausente a sumarização ocorrerá apenas para as mensagens da data de início",
+                        help="Data de fim da sumarização. Se ausente a "
+                        "sumarização ocorrerá apenas para as mensagens da data "
+                        "de início",
                         default='no_end_date')
 
     parser.add_argument("-o", "--output", type=str,
