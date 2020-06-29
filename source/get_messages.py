@@ -95,21 +95,24 @@ class WhatsappCollector():
         """
         args_dict = vars(args)
 
-        if args:
+        if args.json:
             with open(args.json) as json_file:
                 json_args = json.load(json_file)
                 args_dict.update(json_args)
         elif args.json_string:
             json_args = json.loads(args.json_string)
             args_dict.update(json_args)
-        
-        if args_dict["collection_mode"] not in ['continuous', 'period', 'unread']:
-            print('Collection mode invalid <%s>!! Using <continuous> instead'%(args_dict["collection_mode"]))
+
+        if (args_dict["collection_mode"] not in
+                ['continuous', 'period', 'unread']):
+            print('Collection mode invalid <%s>!! Using <continuous> instead' %
+                  (args_dict["collection_mode"]))
             args_dict["collection_mode"] = 'continuous'
         if args_dict["write_mode"] not in ['both', 'day', 'group']:
-            print('Save mode invalid <%s>!! Using <both> instead'%(args_dict["write_mode"]))
+            print('Save mode invalid <%s>!! Using <both> instead' % (
+                args_dict["write_mode"]))
             args_dict["write_mode"] = 'both'
-        
+
         self.collection_mode       = args_dict["collection_mode"]
         self.start_date            = args_dict["start_date"]
         self.end_date              = args_dict["end_date"]
@@ -175,12 +178,11 @@ class WhatsappCollector():
             date = self._get_date_from_message(message).split(' ')[0]
             out_folder = path+date+'/'
             pathlib.Path(out_folder).mkdir(parents=True, exist_ok=True)
-            
+
             filename = self._generate_unique_filename(
                 message, message.filename)
             message.filename = filename
             if not os.path.isfile(path+filename):
-                
                 message.save_media(path, force_download=True)
 
     def _get_video_from_message(self, message, path='/data/video/'):
@@ -198,7 +200,7 @@ class WhatsappCollector():
             date = self._get_date_from_message(message).split(' ')[0]
             out_folder = path+date+'/'
             pathlib.Path(out_folder).mkdir(parents=True, exist_ok=True)
-            
+
             filename = self._generate_unique_filename(
                 message, message.filename)
             message.filename = filename
@@ -375,8 +377,8 @@ class WhatsappCollector():
                 alert = readable[message.type][message.subtype]
             except KeyError as e:
                 alert = 'Other'
-            
-            all_notification_filename = 'data/all_notifications.json'
+
+            all_notification_filename = '/data/all_notifications.json'
             notification = dict()
             notification['message_id'] = str(message.id)
             notification['group_id'] = gid
@@ -495,8 +497,9 @@ class WhatsappCollector():
                 filename = '<NoFile>'
             if hasattr(message, 'caption'):
                 content = smart_str(message.caption)
-        
-        if 'text' in mediatype: mediatype = 'application/json'
+
+        if 'text' in mediatype:
+            mediatype = 'application/json'
         phash = ''
         checksum = ''
 
@@ -553,15 +556,16 @@ class WhatsappCollector():
             with open(message_group_filename, 'a') as json_file:
                 json.dump(item, json_file)
                 print('', file=json_file)
-        
+
         if self.write_mode == 'day' or self.write_mode == 'both':
-        message_day_filename = file_name
-        # Save message on file for all messages of the day
+            message_day_filename = file_name
+
+            # Save message on file for all messages of the day
             with open(message_day_filename, 'a') as json_file:
                 json.dump(item, json_file)
                 print('', file=json_file)
         reference_mid_filename = '/data/mids/%s.txt' % (gid)
-        
+
         # Always save mid reference for future checks
         with open(reference_mid_filename, 'a') as fmid:
             messageLine = '%s\t%s\t%s' % (mid, gid, smart_str(date))
@@ -601,13 +605,14 @@ class WhatsappCollector():
         if (self.collection_mode == 'period') and (min_date < '2020-01-01'):
             raise Exception("Can't start collection without a start and end"
                             " date.")
-        
-        
+
         while looping:
-        
-            if self.collection_mode == 'continuous': looping = True
-            else looping = False
-            
+
+            if self.collection_mode == 'continuous':
+                looping = True
+            else:
+                looping = False
+
             try:
                 print("Waiting for WhatsApp Web Login")
                 driver.wait_for_login()
@@ -693,7 +698,8 @@ class WhatsappCollector():
                     elif self.collection_mode == 'unread':
                         # LOAD UNREAD MESSAGES FROM WHATSAPP
                         messages = chat.get_unread_messages(
-                            include_me=False, include_notifications=include_notf)
+                            include_me=False,
+                            include_notifications=include_notf)
 
                     print('>>>>>Total messages %d' % (len(messages)))
                     count += 1

@@ -92,13 +92,12 @@ class GroupMetadataCollector():
                 Caminho para um profile alternativo do navegador
                 utilizado na coleta.
         """
-        
+
         today = datetime.date.today().strftime('%Y-%m-%d')
         all_groups_filename = '/data/all_groups_%s.json' %(today)
         with open(all_groups_filename, 'w') as json_file:
             print('Collecting metadata for groups at %s'%(today)) 
- 
- 
+
         if not os.path.exists(profile_path):
             os.makedirs(profile_path)
 
@@ -154,7 +153,6 @@ class GroupMetadataCollector():
                     user['profile_pic'] = member.profile_pic
                     participants.append(user)
 
-                admins = list()
                 group['group_id'] = _id
                 group['creator'] = creator
                 group['kind'] = kind
@@ -163,8 +161,7 @@ class GroupMetadataCollector():
                 group['creation']['creation_timestamp'] = timestamp
                 group['title'] = name
                 group['members'] = participants
-                
-                
+
                 path = '/data/metadata/'
                 filename = '%sgrupo_%s.json' % (path, _id.split('@')[0])
                 print(group)
