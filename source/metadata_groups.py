@@ -152,7 +152,6 @@ class GroupMetadataCollector():
                     user['number'] = member.id
                     user['isBusiness'] = member.is_business
                     user['profile_pic'] = member.profile_pic
-                    user['profile_pic'] = member.profile_pic
                     participants.append(user)
 
                 admins = list()
@@ -165,8 +164,9 @@ class GroupMetadataCollector():
                 group['title'] = name
                 group['members'] = participants
                 
+                
                 path = '/data/metadata/'
-                filename = '%s%s.json' % (path, _id)
+                filename = '%sgrupo_%s.json' % (path, _id.split('@')[0])
                 print(group)
                 with open(filename, 'w') as json_file:
                     json.dump(group, json_file)
