@@ -399,7 +399,7 @@ class WhatsappCollector():
                         (str(message.id), gid, msgtype, subtype, timestamp,
                          date, name, sender_user, recipient_user, from_user)
                     print(finalstring)
-                    filename = '%s%s.json' % (path, gid)
+                    filename = '%sgrupo_%s.json' % (path, gid)
                     with open(filename, 'a') as json_file:
                         json.dump(notification, json_file)
                         print('', file=json_file)
@@ -417,7 +417,7 @@ class WhatsappCollector():
                     (str(message.id), gid, msgtype, subtype, timestamp, date,
                      name, sender_user, recipient_user, from_user)
                 print(finalstring)
-                filename = '%s%s.json' % (path, gid)
+                filename = '%sgrupo_%s.json' % (path, gid)
                 with open(filename, 'a') as json_file:
                     json.dump(notification, json_file)
                     print('', file=json_file)
@@ -549,18 +549,20 @@ class WhatsappCollector():
 
         # Save message on group ID file
         if self.write_mode == 'group' or self.write_mode == 'both':
-            message_group_filename = '%s%s.json' % (msg_id_path, gid)
+            message_group_filename = '%sgrupo_%s.json' % (msg_id_path, gid)
             with open(message_group_filename, 'a') as json_file:
                 json.dump(item, json_file)
                 print('', file=json_file)
+        
         if self.write_mode == 'day' or self.write_mode == 'both':
         message_day_filename = file_name
-            # Save message on file for all messages of the day
+        # Save message on file for all messages of the day
             with open(message_day_filename, 'a') as json_file:
                 json.dump(item, json_file)
                 print('', file=json_file)
         reference_mid_filename = '/data/mids/%s.txt' % (gid)
-        # Save mid reference for future checks
+        
+        # Always save mid reference for future checks
         with open(reference_mid_filename, 'a') as fmid:
             messageLine = '%s\t%s\t%s' % (mid, gid, smart_str(date))
             print(messageLine, file=fmid)
