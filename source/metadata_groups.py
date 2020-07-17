@@ -94,7 +94,7 @@ class GroupMetadataCollector():
         """
 
         today = datetime.date.today().strftime('%Y-%m-%d')
-        all_groups_filename = '/data/all_groups_%s.json' %(today)
+        all_groups_filename = '/data/all_grupos_%s.json' %(today)
         with open(all_groups_filename, 'w') as json_file:
             print('Collecting metadata for groups at %s'%(today)) 
 
@@ -112,7 +112,7 @@ class GroupMetadataCollector():
             driver.save_firefox_profile(remove_old=False)
             print("Bot started")
 
-            pathlib.Path("/data/metadata").mkdir(parents=True, exist_ok=True)
+            pathlib.Path("/data/grupos").mkdir(parents=True, exist_ok=True)
 
             print('>>>>>>>>>>> Loading chat ids')
             chats = driver.get_all_chats()
@@ -147,7 +147,7 @@ class GroupMetadataCollector():
                     user = dict()
                     user['name'] = member.verified_name
                     user['short_name'] = member.short_name
-                    user['formatted_name '] = member.formatted_name
+                    user['nome_formatado'] = member.formatted_name
                     user['number'] = member.id
                     user['isBusiness'] = member.is_business
                     user['profile_pic'] = member.profile_pic
@@ -162,8 +162,8 @@ class GroupMetadataCollector():
                 group['title'] = name
                 group['members'] = participants
 
-                path = '/data/metadata/'
-                filename = '%sgrupo_%s.json' % (path, _id.split('@')[0])
+                path = '/data/grupos/'
+                filename = '%sgrupos_%s.json' % (path, _id.split('@')[0].strip())
                 print(group)
                 with open(filename, 'w') as json_file:
                     json.dump(group, json_file)
@@ -206,7 +206,7 @@ def main():
     except Exception as e:
         error_time = str(datetime.datetime.now())
         error_msg = str(e).strip()
-        with open('/data/log.txt', 'w') as ferror:
+        with open('/data/log_grupos.txt', 'w') as ferror:
             print("%s >> Error:\t%s" % (error_time, error_msg))
             print("%s >> Error:\t%s" % (error_time, error_msg), file=ferror)
 
