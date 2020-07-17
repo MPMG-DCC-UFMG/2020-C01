@@ -25,7 +25,7 @@ def smart_str(x):
 
 
 def get_messages_by_group(driver):
-    msg_list = driver.get_unread(include_me=False, include_notifications=False, use_unread_count=False)
+    msg_list = driver.get_unread(include_me=False, include_notifications=True, use_unread_count=False)
     return msg_list
 
 
@@ -163,7 +163,7 @@ class WhatsappCollector():
                                     mediaID, filename.split('.')[-1])
         return filename
 
-    def _get_image_from_message(self, message, path='/data/image/'):
+    def _get_image_from_message(self, message, path='/image/'):
         """
         Baixa a imagem contida na mensagem coletada, caso ela exista.
 
@@ -257,7 +257,7 @@ class WhatsappCollector():
         group = t[index:].split(':')[0]
         return group
 
-    def _get_load_notifications(self, path='/data/notifications/'):
+    def _get_load_notifications(self, path='/data/notificacoes/'):
         """
         Carrega e retorna um dicionário contendo os ids e datas das
         notificações já coletadas.
@@ -321,7 +321,7 @@ class WhatsappCollector():
         else:
             return True
 
-    def _save_notification_(self, message, gid, path='/data/notifications/'):
+    def _save_notification_(self, message, gid, path='/data/notificacoes/'):
         """
         Escreve em formato json a notificação contida na mensagem no arquivo
         referente ao grupo em que ela foi enviada. Caso o arquivo do grupo
@@ -377,8 +377,9 @@ class WhatsappCollector():
                 alert = readable[message.type][message.subtype]
             except KeyError as e:
                 alert = 'Other'
-
-            all_notification_filename = '/data/all_notifications.json'
+            
+            n_date = notification['notification_date'].split(' ')[0]
+            all_notification_filename = '/data/all_notificacoes_%s.json' %(n_date)
             notification = dict()
             notification['message_id'] = str(message.id)
             notification['group_id'] = gid
@@ -401,7 +402,7 @@ class WhatsappCollector():
                         (str(message.id), gid, msgtype, subtype, timestamp,
                          date, name, sender_user, recipient_user, from_user)
                     print(finalstring)
-                    filename = '%sgrupo_%s.json' % (path, gid)
+                    filename = '%snotificacoes_%s.json' % (path, gid)
                     with open(filename, 'a') as json_file:
                         json.dump(notification, json_file)
                         print('', file=json_file)
@@ -419,7 +420,7 @@ class WhatsappCollector():
                     (str(message.id), gid, msgtype, subtype, timestamp, date,
                      name, sender_user, recipient_user, from_user)
                 print(finalstring)
-                filename = '%sgrupo_%s.json' % (path, gid)
+                filename = '%snotificacoes_%s.json' % (path, gid)
                 with open(filename, 'a') as json_file:
                     json.dump(notification, json_file)
                     print('', file=json_file)
@@ -430,7 +431,7 @@ class WhatsappCollector():
             return notification
 
     def _save_message(self, message, group_name, chat_id, msg_id, file_name,
-                      msg_id_path='/data/groupID/'):
+                      msg_id_path='/data/mensagens_grupo/'):
         """
         Escreve em formato json a mensagem coletada no arquivo
         referente ao grupo em que ela foi enviada. Caso o arquivo do grupo
@@ -552,7 +553,7 @@ class WhatsappCollector():
 
         # Save message on group ID file
         if self.write_mode == 'group' or self.write_mode == 'both':
-            message_group_filename = '%sgrupo_%s.json' % (msg_id_path, gid)
+            message_group_filename = '%smensagens_grupo_%s.json' % (msg_id_path, gid)
             with open(message_group_filename, 'a') as json_file:
                 json.dump(item, json_file)
                 print('', file=json_file)
@@ -590,12 +591,12 @@ class WhatsappCollector():
                                 client="remote",
                                 command_executor=os.environ["SELENIUM"])
 
-        pathlib.Path("/data/text").mkdir(parents=True, exist_ok=True)
+        pathlib.Path("/data/mensagens").mkdir(parents=True, exist_ok=True)
         pathlib.Path("/data/image").mkdir(parents=True, exist_ok=True)
         pathlib.Path("/data/audio").mkdir(parents=True, exist_ok=True)
         pathlib.Path("/data/video").mkdir(parents=True, exist_ok=True)
-        pathlib.Path("/data/groupID").mkdir(parents=True, exist_ok=True)
-        pathlib.Path("/data/notifications").mkdir(parents=True, exist_ok=True)
+        pathlib.Path("/data/mensagens_grupo").mkdir(parents=True, exist_ok=True)
+        pathlib.Path("/data/notificacoes").mkdir(parents=True, exist_ok=True)
         pathlib.Path("/data/mids").mkdir(parents=True, exist_ok=True)
 
         min_date = self.start_date
@@ -624,10 +625,9 @@ class WhatsappCollector():
                 messagesID = self._get_load_messages()
                 notificationsID = self._get_load_notifications()
 
-                today_date = datetime.date.today().strftime("%Y_%m_%d")
-                today_date = 'test'
+                today_date = datetime.date.today().strftime("%Y-%m-%d")
                 date_format = "%Y-%m-%d"
-                file_name = "/data/AllMessages_" + today_date + ".txt"
+                file_name = "/data/mensagens/mensagens_" + today_date + ".json"
                 start_date = min_date
 
                 print('>>>>>>>>>>>>Getting Groups Messages...', end=' ')
@@ -752,8 +752,7 @@ class WhatsappCollector():
                         # Update day
                         if today_date != date:
                             today_date = date
-                            file_name = "/data/text/AllMessages_" + today_date + \
-                                ".txt"
+                            file_name = "/data/mensagens/mensagens_" + today_date + ".json"
 
                         if self.collect_images:
                             try:
