@@ -163,7 +163,7 @@ class WhatsappCollector():
                                     mediaID, filename.split('.')[-1])
         return filename
 
-    def _get_image_from_message(self, message, path='/image/'):
+    def _get_image_from_message(self, message, path='/data/image/'):
         """
         Baixa a imagem contida na mensagem coletada, caso ela exista.
 
@@ -377,10 +377,9 @@ class WhatsappCollector():
                 alert = readable[message.type][message.subtype]
             except KeyError as e:
                 alert = 'Other'
-            
-            n_date = notification['notification_date'].split(' ')[0]
-            all_notification_filename = '/data/all_notificacoes_%s.json' %(n_date)
+
             notification = dict()
+
             notification['message_id'] = str(message.id)
             notification['group_id'] = gid
             notification['activity_msg'] = msgtype
@@ -390,6 +389,10 @@ class WhatsappCollector():
             notification['sender'] = sender_user
             notification['contact'] = name
             notification['received_by'] = from_user
+
+            n_date = notification['notification_date'].split(' ')[0]
+            all_notification_filename = '/data/all_notificacoes_%s.json' % \
+                (n_date)
 
             if message._js_obj['recipients']:
                 for item in message._js_obj['recipients']:

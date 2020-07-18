@@ -70,7 +70,7 @@ class SummarizationUtil:
     """
 
     def __init__(self, media_type, comparison_method, start_date, end_date,
-                 messages_path="/data/text/"):
+                 messages_path="/data/mensagens/"):
         self.media_type = media_type
         self.comparison_method = comparison_method
         self.start_date = start_date
@@ -114,7 +114,7 @@ class SummarizationUtil:
 
         hashes = dict()
         for date in get_days_list(self.start_date, self.end_date):
-            json_filename = 'AllMessages_%s.txt' % (date)
+            json_filename = 'mensagens_%s.json' % (date)
             if not isfile(join(self.messages_path, json_filename)):
                 continue
             with open(join(self.messages_path, json_filename), 'r') as fdata:
@@ -206,7 +206,7 @@ class SummarizationUtil:
 
         hashes = dict()
         for date in get_days_list(self.start_date, self.end_date):
-            json_filename = 'AllMessages_%s.txt' % (date)
+            json_filename = 'mensagens_%s.json' % (date)
             if not isfile(join(self.messages_path, json_filename)):
                 continue
             with open(join(self.messages_path, json_filename), 'r') as fdata:
