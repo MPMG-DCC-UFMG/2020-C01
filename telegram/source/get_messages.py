@@ -1,5 +1,9 @@
+# -*- coding: utf-8 -*-
 from telethon import TelegramClient, events
 from PIL import Image
+from kafka_functions import KafkaManager
+from kafka import KafkaConsumer
+from kafka import KafkaProducer
 
 import asyncio
 import pathlib
@@ -119,6 +123,11 @@ class TelegramCollector():
         self.process_other_hashes  = args_dict["process_other_hashes"]
         self.api_id                = args_dict["api_id"]
         self.api_hash              = args_dict["api_hash"]
+        
+        self.save_file             = False
+        self.save_kafka            = True
+        self.kafka                 = KafkaManager()
+        self.producer              = self.kafka.connect_kafka_producer()
 
     def _get_load_messages(self, path='/data/mid_file.txt'):
         """
@@ -251,21 +260,29 @@ class TelegramCollector():
                 
             print(item)
         # Save message on group ID file
-        if self.write_mode == "group" or self.write_mode == "both":
-            message_group_filename = os.path.join(group_path, "mensagens_grupo_" + str(item["group_id"]) + ".json" )
+        
+        if self.save_kafka:
+            topic = self.kafka.get_topic('telegram' , 'mensagem')
+            json_dump_object = json.dumps(item)
+            self.kafka.publish_kafka_message(self.producer, topic, 'raw', json_dump_object)
+            
+        if self.save_file:
+            if self.write_mode == "group" or self.write_mode == "both":
+                message_group_filename = os.path.join(group_path, "mensagens_grupo_" + str(item["group_id"]) + ".json" )
 
-            # Save message on file for all messages of the group
-            with open(message_group_filename, "a") as json_file:
-                json.dump(item, json_file)
-                print("", file=json_file)
+                
+                # Save message on file for all messages of the group
+                with open(message_group_filename, "a") as json_file:
+                    json.dump(item, json_file)
+                    print("", file=json_file)
 
-        if self.write_mode == "day" or self.write_mode == "both":
-            message_day_filename = os.path.join(daily_path, "mensagens_" + message.date.strftime("%Y-%m-%d") + ".json")
+            if self.write_mode == "day" or self.write_mode == "both":
+                message_day_filename = os.path.join(daily_path, "mensagens_" + message.date.strftime("%Y-%m-%d") + ".json")
 
-            # Save message on file for all messages of the day
-            with open(message_day_filename, "a") as json_file:
-                json.dump(item, json_file)
-                print("", file=json_file)
+                # Save message on file for all messages of the day
+                with open(message_day_filename, "a") as json_file:
+                    json.dump(item, json_file)
+                    print("", file=json_file)
     
     def _save_notification(self, message, path='/data/notificacoes/'):
         """
@@ -303,10 +320,17 @@ class TelegramCollector():
         notification_group_filename = os.path.join(
             path, "notificacoes_grupo_" + str(notification["group_id"]) + ".json" )
 
-        # Save message on file for all messages of the group
-        with open(notification_group_filename, "a") as json_file:
-            json.dump(notification, json_file)
-            print("", file=json_file)
+        if self.save_file:
+            #Save message on file for all messages of the group
+            #Não chamar, pois será salvo no kafka
+            with open(notification_group_filename, "a") as json_file:
+                json.dump(notification, json_file)
+                print("", file=json_file)
+ 
+        if self.save_kafka:
+            topic = self.kafka.get_topic('telegram' , 'mensagem')
+            json_dump_object = json.dumps(notification)
+            self.kafka.publish_kafka_message(self.producer, topic, 'raw', json_dump_object)
 
     async def _run_unread_collector(self):
         async_client = TelegramClient('/data/collector_local', self.api_id, self.api_hash)
@@ -506,3 +530,4 @@ async def main():
 
 if __name__ == '__main__':
     asyncio.run(main())
+

@@ -1,4 +1,8 @@
+# -*- coding: utf-8 -*-
 from telethon import TelegramClient, events
+from kafka_functions import KafkaManager
+from kafka import KafkaConsumer
+from kafka import KafkaProducer
 
 import asyncio
 import os
@@ -55,6 +59,10 @@ class GroupMetadataCollector():
         self.api_hash              = args_dict["api_hash"]
         self.profile_pic           = args_dict["profile_pic"]
         self.profiles              = args_dict["profiles"]
+        self.save_file             = False
+        self.save_kafka            = True
+        self.kafka                 = KafkaManager()
+        self.producer              = self.kafka.connect_kafka_producer()
 
     async def run(self):
         """
@@ -128,10 +136,20 @@ class GroupMetadataCollector():
                         participants.append(user)
                 group['members'] = participants
                 
-                filename = os.path.join(new_folder, 'grupos.json')
-                with open(filename, 'a') as json_file:
-                    json.dump(group, json_file)
-                    print('', file=json_file)
+                
+                if self.save_kafka:
+                    topic = self.kafka.get_topic('telegram' , 'grupo')
+                    json_dump_object = json.dumps(group)
+                    self.kafka.publish_kafka_message(self.producer, topic, 'raw', json_dump_object)
+                
+                
+                if self.save_file:
+                    filename = os.path.join(new_folder, 'grupos.json')
+                    with open(filename, 'a') as json_file:
+                        json.dump(group, json_file)
+                        print('', file=json_file)
+                
+                
                 
 def str2bool(v):
     if isinstance(v, bool):
@@ -189,3 +207,4 @@ async def main():
 
 if __name__ == '__main__':
     asyncio.run(main())
+
