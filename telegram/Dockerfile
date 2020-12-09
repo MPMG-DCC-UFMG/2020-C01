@@ -1,3 +1,10 @@
+# Download base image ubuntu 16.04
+FROM ubuntu:16.04
+
+
+# Set encoding
+ENV LANG C.UTF-8
+
 # Use an official Python runtime as a parent image
 FROM python:3.8
 
@@ -17,9 +24,17 @@ COPY source /app
 CMD python get_messages.py
 
 
+# Update Ubuntu Software repository
+RUN apt-get update -y && apt-get upgrade -y
+
+
+# Install essential packages
+RUN apt-get install -y wget curl zip
+
 # Install kafka-needed java library and zookeeper
-RUN apt-get install -y default-jre
-RUN apt-get install zookeeperd
+RUN apt-get install  default-jre -y
+#RUN apt-get install oracle-java8-installer -y
+RUN apt-get install zookeeperd -y
 
 # Create needed folders
 RUN mkdir /data && mkdir /data/kafka
