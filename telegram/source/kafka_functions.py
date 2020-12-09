@@ -53,9 +53,9 @@ class KafkaManager():
         #args_dict = vars(args)
         
         ### XXX TODO verificar se esses topicos vao mudar
-        self.KAFKA_SERVERS            = [('hadoopdn-gsi-prod0' + str(j) + '.mpmg.mp.br:6667').replace('010', '10') for j in range(4, 10 + 1)]
-        self.KAFKA_SERVERS            = self.KAFKA_SERVERS[:1]
-        #self.KAFKA_SERVERS            = ['localhost:9092'] #Server padrão para testes
+        #self.KAFKA_SERVERS            = [('hadoopdn-gsi-prod0' + str(j) + '.mpmg.mp.br:6667').replace('010', '10') for j in range(4, 10 + 1)]
+        self.KAFKA_SERVERS            = ['hadoopdn-gsi-prod04.mpmg.mp.br:6667'] 
+        #self.KAFKA_SERVERS            = ['192.168.99.100:9092'] #Server padrão para testes
         self.KAFKA_TOPIC_STATUS_OK    = "crawler_status_ok"
         self.KAFKA_TOPIC_STATUS_ERROR = "crawler_status_error"
 
@@ -74,8 +74,8 @@ class KafkaManager():
             try:
                 key_bytes = bytes(key, encoding='utf-8')
                 value_bytes = bytes(value, encoding='utf-8')
-                producer.send(topic_name, key=key_bytes, value=value_bytes)
-                #producer.send(topic_name, value)
+                #producer.send(topic_name, key=key_bytes, value=value_bytes)
+                producer.send(topic_name,  str.encode(value) )
                 producer.flush()
                 print('Message published successfully.')
                 sent = True
