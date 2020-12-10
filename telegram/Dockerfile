@@ -25,22 +25,22 @@ CMD python get_messages.py
 
 
 # Update Ubuntu Software repository
-RUN apt-get update -y && apt-get upgrade -y
+#RUN apt-get update -y && apt-get upgrade -y
 
 
 # Install essential packages
-RUN apt-get install -y wget curl zip
+#RUN apt-get install -y wget curl zip
 
 # Install kafka-needed java library and zookeeper
-RUN apt-get install  default-jre -y
+#RUN apt-get install  default-jre -y
 #RUN apt-get install oracle-java8-installer -y
-RUN apt-get install zookeeperd -y
+#RUN apt-get install zookeeperd -y
 
 # Create needed folders
-RUN mkdir /data && mkdir /data/kafka
+#RUN mkdir /data && mkdir /data/kafka
 
 # Install kafka-scripts
 # COPY data/kafka.tgz /home/mp/Downloads/kafka/kafka.tgz
-RUN wget https://downloads.apache.org/kafka/2.6.0/kafka_2.13-2.6.0.tgz -O /data/kafka/kafka.tgz
-RUN tar -xvzf /data/kafka/kafka.tgz --strip 1 --directory /data/kafka/
+#RUN wget https://downloads.apache.org/kafka/2.6.0/kafka_2.13-2.6.0.tgz -O /data/kafka/kafka.tgz
+#RUN tar -xvzf /data/kafka/kafka.tgz --strip 1 --directory /data/kafka/
 
