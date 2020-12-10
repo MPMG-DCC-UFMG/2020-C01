@@ -7,6 +7,10 @@ from webwhatsapi import WhatsAPIDriver
 from webwhatsapi.objects.message import NotificationMessage
 from webwhatsapi.objects import message as MESSAGE
 
+from kafka_functions import KafkaManager
+from kafka import KafkaConsumer
+from kafka import KafkaProducer
+
 import time
 import random
 import datetime
@@ -108,11 +112,12 @@ class WhatsappCollector():
             print('Collection mode invalid <%s>!! Using <continuous> instead' %
                   (args_dict["collection_mode"]))
             args_dict["collection_mode"] = 'continuous'
-        if args_dict["write_mode"] not in ['both', 'day', 'group']:
-            print('Save mode invalid <%s>!! Using <both> instead' % (
+        if args_dict["write_mode"] not in ['both', 'day', 'group', 'kafka']:
+            print('Save mode invalid <%s>!! Using <kafka> instead' % (
                 args_dict["write_mode"]))
             args_dict["write_mode"] = 'both'
-
+        
+        
         self.collection_mode       = args_dict["collection_mode"]
         self.start_date            = args_dict["start_date"]
         self.end_date              = args_dict["end_date"]
@@ -127,7 +132,15 @@ class WhatsappCollector():
         self.process_audio_hashes  = args_dict["process_audio_hashes"]
         self.process_image_hashes  = args_dict["process_image_hashes"]
         self.process_video_hashes  = args_dict["process_video_hashes"]
+        self.profile               = args_dict["profile"]
+        self.data_path             = args_dict["datalake"]
 
+
+        self.save_file             = False
+        self.save_kafka            = True
+        self.kafka                 = KafkaManager()
+        self.producer              = self.kafka.connect_kafka_producer()
+        
     def _process_string(self, string):
         """
         Processa strings que irão pra saída do coletor, removendo quebras
@@ -380,17 +393,18 @@ class WhatsappCollector():
 
             notification = dict()
 
-            notification['message_id'] = str(message.id)
-            notification['group_id'] = gid
-            notification['activity_msg'] = msgtype
+            notification['identificador'] = str(message.id)
+            notification['mensagem_id'] = str(message.id)
+            notification['grupo_id'] = gid
+            notification['acao'] = msgtype
             notification['notification_type'] = subtype
-            notification['notification_timestamp'] = timestamp
-            notification['notification_date'] = date
-            notification['sender'] = sender_user
+            notification['timestamp'] = timestamp
+            notification['criado_em'] = date
+            notification['enviado_por'] = sender_user
             notification['contact'] = name
             notification['received_by'] = from_user
 
-            n_date = notification['notification_date'].split(' ')[0]
+            n_date = notification['criado_em'].split(' ')[0]
             all_notification_filename = '/data/all_notificacoes_%s.json' % \
                 (n_date)
 
@@ -405,13 +419,20 @@ class WhatsappCollector():
                         (str(message.id), gid, msgtype, subtype, timestamp,
                          date, name, sender_user, recipient_user, from_user)
                     print(finalstring)
-                    filename = '%snotificacoes_%s.json' % (path, gid)
-                    with open(filename, 'a') as json_file:
-                        json.dump(notification, json_file)
-                        print('', file=json_file)
-                    with open(all_notification_filename, 'a') as json_file:
-                        json.dump(notification, json_file)
-                        print('', file=json_file)
+                                                
+                    if self.save_kafka:
+                        topic = self.kafka.get_topic('whatsapp' , 'notificacao')
+                        json_dump_object = json.dumps(notification)
+                        self.kafka.publish_kafka_message(self.producer, topic, 'raw', json_dump_object)
+                    
+                    if self.save_file:
+                        filename = '%snotificacoes_%s.json' % (path, gid)
+                        with open(filename, 'a') as json_file:
+                            json.dump(notification, json_file)
+                            print('', file=json_file)
+                        with open(all_notification_filename, 'a') as json_file:
+                            json.dump(notification, json_file)
+                            print('', file=json_file)
 
             else:
                 try:
@@ -423,13 +444,20 @@ class WhatsappCollector():
                     (str(message.id), gid, msgtype, subtype, timestamp, date,
                      name, sender_user, recipient_user, from_user)
                 print(finalstring)
-                filename = '%snotificacoes_%s.json' % (path, gid)
-                with open(filename, 'a') as json_file:
-                    json.dump(notification, json_file)
-                    print('', file=json_file)
-                with open(all_notification_filename, 'a') as json_file:
-                    json.dump(notification, json_file)
-                    print('', file=json_file)
+                                            
+                if self.save_kafka:
+                    topic = self.kafka.get_topic('whatsapp' , 'notificacao')
+                    json_dump_object = json.dumps(notification)
+                    self.kafka.publish_kafka_message(self.producer, topic, 'raw', json_dump_object)
+                
+                if self.save_file:
+                    filename = '%snotificacoes_%s.json' % (path, gid)
+                    with open(filename, 'a') as json_file:
+                        json.dump(notification, json_file)
+                        print('', file=json_file)
+                    with open(all_notification_filename, 'a') as json_file:
+                        json.dump(notification, json_file)
+                        print('', file=json_file)
 
             return notification
 
@@ -512,11 +540,11 @@ class WhatsappCollector():
                 (mediatype == 'audio' and self.process_audio_hashes)):
             dir = ""
             if mediatype == 'image':
-                dir = "/data/image"
+                dir = self.data_path+"image"
             if mediatype == 'video':
-                dir = "/data/video"
+                dir = self.data_path+"video"
             if mediatype == 'audio':
-                dir = "/data/audio"
+                dir = self.data_path+"audio"
 
             try:
                 checksum = hash_functions.get_hash_from_method(os.path.join(
@@ -533,15 +561,16 @@ class WhatsappCollector():
                     print("Couldn't process phash for file %s." % (
                         message.filename))
 
-        item['message_id'] = mid
-        item['group_id'] = gid
-        item['group_name'] = group_name
-        item['country'] = country
-        item['sender'] = smart_str(sender)
-        item['data'] = smart_str(date)
-        item['mediatype'] = mediatype
-        item['file'] = smart_str(filename)
-        item['content'] = smart_str(content)
+        item['mensagem_id'] = mid
+        item['identificador'] = mid
+        item['grupo_id'] = gid
+        item['titulo'] = group_name
+        item['pais'] = country
+        item['enviado_por'] = smart_str(sender)
+        item['criado_em'] = smart_str(date)
+        item['tipo'] = mediatype
+        item['arquivo'] = smart_str(filename)
+        item['texto'] = smart_str(content)
         if (mediatype == 'video' or mediatype == 'image'
                 or mediatype == 'audio'):
             item['checksum'] = checksum
@@ -554,23 +583,32 @@ class WhatsappCollector():
              self._process_string(content))
         print(messageLine)
 
-        # Save message on group ID file
-        if self.write_mode == 'group' or self.write_mode == 'both':
-            message_group_filename = '%smensagens_grupo_%s.json' % (msg_id_path, gid)
-            with open(message_group_filename, 'a') as json_file:
-                json.dump(item, json_file)
-                print('', file=json_file)
+        # Save message on kafka
+                
+        if self.save_kafka:
+            topic = self.kafka.get_topic('whatsapp' , 'mensagem')
+            json_dump_object = json.dumps(item)
+            self.kafka.publish_kafka_message(self.producer, topic, 'raw', json_dump_object)
+        
+        if self.save_file:
+            # Save message on group ID file
+            if self.write_mode == 'group' or self.write_mode == 'both':
+                message_group_filename = '%smensagens_grupo_%s.json' % (msg_id_path, gid)
+                with open(message_group_filename, 'a') as json_file:
+                    json.dump(item, json_file)
+                    print('', file=json_file)
 
-        if self.write_mode == 'day' or self.write_mode == 'both':
-            message_day_filename = file_name
+            if self.write_mode == 'day' or self.write_mode == 'both':
+                message_day_filename = file_name
 
-            # Save message on file for all messages of the day
-            with open(message_day_filename, 'a') as json_file:
-                json.dump(item, json_file)
-                print('', file=json_file)
-        reference_mid_filename = '/data/mids/%s.txt' % (gid)
-
+                # Save message on file for all messages of the day
+                with open(message_day_filename, 'a') as json_file:
+                    json.dump(item, json_file)
+                    print('', file=json_file)
+        
+        
         # Always save mid reference for future checks
+        reference_mid_filename = '/data/mids/%s.txt' % (gid)
         with open(reference_mid_filename, 'a') as fmid:
             messageLine = '%s\t%s\t%s' % (mid, gid, smart_str(date))
             print(messageLine, file=fmid)
@@ -578,6 +616,8 @@ class WhatsappCollector():
         return item
 
     def run(self, profile_path="/data/firefox_cache"):
+    
+        profile_path = self.profile
         """
         Faz a coleta das mensagens de grupos de Whatsapp de acordo
         com os parâmetros fornecidos na criação do objeto de coleta.
@@ -588,18 +628,21 @@ class WhatsappCollector():
                 Caminho para um profile alternativo do navegador
                 utilizado na coleta.
         """
+        if not os.path.exists(self.data_path):
+            os.makedirs(self.data_path)
+            
         if not os.path.exists(profile_path):
             os.makedirs(profile_path)
         driver = WhatsAPIDriver(loadstyles=True, profile=profile_path,
                                 client="remote",
                                 command_executor=os.environ["SELENIUM"])
 
-        pathlib.Path("/data/mensagens").mkdir(parents=True, exist_ok=True)
-        pathlib.Path("/data/image").mkdir(parents=True, exist_ok=True)
-        pathlib.Path("/data/audio").mkdir(parents=True, exist_ok=True)
-        pathlib.Path("/data/video").mkdir(parents=True, exist_ok=True)
-        pathlib.Path("/data/mensagens_grupo").mkdir(parents=True, exist_ok=True)
-        pathlib.Path("/data/notificacoes").mkdir(parents=True, exist_ok=True)
+        pathlib.Path(self.data_path+"mensagens").mkdir(parents=True, exist_ok=True)
+        pathlib.Path(self.data_path+"image").mkdir(parents=True, exist_ok=True)
+        pathlib.Path(self.data_path+"audio").mkdir(parents=True, exist_ok=True)
+        pathlib.Path(self.data_path+"video").mkdir(parents=True, exist_ok=True)
+        pathlib.Path(self.data_path+"mensagens_grupo").mkdir(parents=True, exist_ok=True)
+        pathlib.Path(self.data_path+"notificacoes").mkdir(parents=True, exist_ok=True)
         pathlib.Path("/data/mids").mkdir(parents=True, exist_ok=True)
 
         min_date = self.start_date
@@ -630,7 +673,7 @@ class WhatsappCollector():
 
                 today_date = datetime.date.today().strftime("%Y-%m-%d")
                 date_format = "%Y-%m-%d"
-                file_name = "/data/mensagens/mensagens_" + today_date + ".json"
+                file_name = self.data_path+"mensagens/mensagens_" + today_date + ".json"
                 start_date = min_date
 
                 print('>>>>>>>>>>>>Getting Groups Messages...', end=' ')
@@ -755,23 +798,23 @@ class WhatsappCollector():
                         # Update day
                         if today_date != date:
                             today_date = date
-                            file_name = "/data/mensagens/mensagens_" + today_date + ".json"
+                            file_name = self.data_path+"mensagens/mensagens_" + today_date + ".json"
 
                         if self.collect_images:
                             try:
-                                self._get_image_from_message(j)
+                                self._get_image_from_message(j, self.data_path+"image")
                             except Exception as ei:
                                 print('!!!!Error getting image!!!! ', ei)
 
                         if self.collect_videos:
                             try:
-                                self._get_video_from_message(j)
+                                self._get_video_from_message(j, self.data_path+"video")
                             except Exception as ev:
                                 print('!!!!Error getting video!!!! ', ev)
 
                         if self.collect_audios:
                             try:
-                                self._get_audio_from_message(j)
+                                self._get_audio_from_message(j, self.data_path+"audio")
                             except Exception as ea:
                                 print('!!!!Error getting audio!!!! ', ea)
 
@@ -783,6 +826,7 @@ class WhatsappCollector():
                 print(e)
                 driver.close()
                 raise Exception(e)
+
             if looping:
                 print('Waiting code to start again...')
                 time.sleep(3600)
@@ -796,6 +840,10 @@ def main():
                         " ou \'unread\' ou \'continuous\').",
                         default='continuous')
 
+    parser.add_argument("-p", "--profile", type=str,
+                        help="Perfil de usuario",
+                        default='/data/firefox_cache')
+
     parser.add_argument("-s", "--start_date", type=str,
                         help="Data de início do período de coleta (Modo"
                         " \'period\').", default='2000-01-01')
@@ -805,7 +853,7 @@ def main():
                         " \'period\').", default='2999-12-31')
 
     parser.add_argument("-w", "--write_mode", type=str,
-                        help="Modo de salvamento das mensagens no arquivos de saída(\'both\', \'day\', \'group\'). ", default='2999-12-31')
+                        help="Modo de salvamento das mensagens no arquivos de saída(\'both\', \'day\', \'group\'). ", default='kafka')
 
     parser.add_argument("--collect_messages", type=bool,
                         help="Se mensagens de texto devem ser coletadas"
@@ -843,9 +891,15 @@ def main():
                         help="Lista de ids de grupos que devem ser excluídos da"
                         " coleta", default=[])
 
+
     parser.add_argument("--user_blacklist", nargs="+",
-                        help="Lista de usuários que devem ser excluídos da"
+                        help="Lista de ids de grupos que devem ser excluídos da"
                         " coleta", default=[])
+
+    parser.add_argument("-d", "--datalake", type=str,
+                        help="Local para salvar arquivos de midia",
+                        default='/data/')
+
 
     parser.add_argument("-j", "--json", type=str,
                         help="Caminho para um arquivo json de configuração de "
@@ -863,7 +917,7 @@ def main():
 
     try:
         collector = WhatsappCollector(args)
-        collector.run()
+        collector.run( )
     except Exception as e:
         error_time = str(datetime.datetime.now())
         error_msg = str(e).strip()
