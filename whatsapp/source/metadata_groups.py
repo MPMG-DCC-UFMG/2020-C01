@@ -145,22 +145,22 @@ class GroupMetadataCollector():
                 participants = list()
                 for member in driver.group_get_participants(_id):
                     user = dict()
-                    user['name'] = member.verified_name
-                    user['short_name'] = member.short_name
+                    user['nome'] = member.verified_name
+                    user['nome_curto'] = member.short_name
                     user['nome_formatado'] = member.formatted_name
-                    user['number'] = member.id
+                    user['telefone'] = member.id
                     user['isBusiness'] = member.is_business
                     user['profile_pic'] = member.profile_pic
                     participants.append(user)
 
-                group['group_id'] = _id
-                group['creator'] = creator
-                group['kind'] = kind
-                group['creation'] = dict()
-                group['creation']['creation_date'] = str_date
-                group['creation']['creation_timestamp'] = timestamp
-                group['title'] = name
-                group['members'] = participants
+                group['grupo_id'] = _id
+                group['criador'] = creator
+                group['tipo'] = kind
+                group['criacao'] = dict()
+                group['criacao']['criado_em'] = str_date
+                group['criacao']['timestamp'] = timestamp
+                group['titulo'] = name
+                group['membros'] = participants
 
                 path = '/data/grupos/'
                 filename = '%sgrupos_%s.json' % (path, _id.split('@')[0].strip())

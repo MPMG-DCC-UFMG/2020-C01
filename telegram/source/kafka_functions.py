@@ -50,12 +50,10 @@ class KafkaManager():
                 Objeto com atributos que contém os argumentos de linha de
                 comando fornecidos.
         """
-        #args_dict = vars(args)
         
-        ### XXX TODO verificar se esses topicos vao mudar
+        #self.KAFKA_SERVERS            = ['192.168.99.100:9092'] #Server padrão para testes
         #self.KAFKA_SERVERS            = [('hadoopdn-gsi-prod0' + str(j) + '.mpmg.mp.br:6667').replace('010', '10') for j in range(4, 10 + 1)]
         self.KAFKA_SERVERS            = ['hadoopdn-gsi-prod04.mpmg.mp.br:6667'] 
-        #self.KAFKA_SERVERS            = ['192.168.99.100:9092'] #Server padrão para testes
         self.KAFKA_TOPIC_STATUS_OK    = "crawler_status_ok"
         self.KAFKA_TOPIC_STATUS_ERROR = "crawler_status_error"
 
@@ -67,7 +65,7 @@ class KafkaManager():
         '''
 
         # usage example:
-        # publish_message(kafka_producer, 'crawler_whatsapp_message', 'raw', my_string.strip())
+        # publish_message(producer, 'crawler_telegram_mensagem', 'raw', json_string)
         sent = False
         
         if  producer  is not None:
@@ -77,7 +75,7 @@ class KafkaManager():
                 #producer.send(topic_name, key=key_bytes, value=value_bytes)
                 producer.send(topic_name,  str.encode(value) )
                 producer.flush()
-                print('Message published successfully.')
+                print('Messagem publicada no topico "%s" do Kafka com sucesso.' %(topic_name))
                 sent = True
             except Exception as ex:
                 print('Exception in publishing message')
@@ -95,7 +93,7 @@ class KafkaManager():
             
             if not _producer.bootstrap_connected():
                 #_producer = None
-                print('Bootstrap not connected!')
+                print('Connecting to Kafka server...')
             else:
                 print('Kafka producer connected succesfully!!')
         except Exception as ex:
@@ -113,12 +111,12 @@ class KafkaManager():
         topics = {
             'whatsapp':{
                 'grupo':       'crawler_whatsapp_grupo',
-                'notificacao': 'crawler_whatsapp_mensagem',
+                'notificacao': 'crawler_whatsapp_notificacao',
                 'mensagem':    'crawler_whatsapp_mensagem'
             },
             'telegram':{
                 'grupo':       'crawler_telegram_grupo',
-                'notificacao': 'crawler_telegram_mensagem',
+                'notificacao': 'crawler_telegram_notificacao',
                 'mensagem':    'crawler_telegram_mensagem'
             }
         }

@@ -53,7 +53,19 @@ class GroupMetadataCollector():
         elif args.json_string:
             json_args = json.loads(args.json_string)
             args_dict.update(json_args)
-
+    
+        if (args_dict["api_id"] == '' or args_dict["api_id"] == None) or (args_dict["api_hash"] == '' or args_dict["api_hash"] == None):
+            keys_file = '/config/credentials.json' 
+            if os.path.isfile(keys_file):
+                with open(keys_file, 'r') as fin:
+                    keys_args = json.load(fin)
+                    args_dict["api_id"]   = keys_args["api_id"]
+                    args_dict["api_hash"] = keys_args["api_hash"]
+            else:
+                print('No credentials provided: api_id, api_hash\nUnable to connect to Telegram API...')
+                sys.exit(1)
+            
+            
         self.group_blacklist       = args_dict["group_blacklist"]
         self.api_id                = args_dict["api_id"]
         self.api_hash              = args_dict["api_hash"]
@@ -64,6 +76,14 @@ class GroupMetadataCollector():
         self.kafka                 = KafkaManager()
         self.producer              = self.kafka.connect_kafka_producer()
 
+        #SAVING CREDENTIALS FOR FUTURE
+        with open('/config/credentials.json' , "w") as json_file:
+            api_dict = dict()
+            api_dict["api_id"]    = args_dict["api_id"]
+            api_dict["api_hash"]  = args_dict["api_hash"]
+            json.dump(api_dict, json_file)
+        
+        
     async def run(self):
         """
         Faz a coleta dos metadados de grupos de Telegram de acordo
@@ -96,18 +116,18 @@ class GroupMetadataCollector():
 
                 creator_id = None
                 #TODO: check what kind is and dont know how to get creator
-                group['group_id'] = dialog.entity.id
+                group['grupo_id'] = dialog.entity.id
                 # group['creator'] = creator
                 # group['kind'] = kind
-                group['creation'] = dict()
-                group['creation']['creation_date'] = dialog.entity.date.strftime('%Y-%m-%d %H:%M:%S')
-                group['creation']['creation_timestamp'] = int(datetime.datetime.timestamp(dialog.entity.date))
-                group['title'] = dialog.entity.title
-                group['collection_date'] = now.strftime('%Y-%m-%d')
+                group['criacao'] = dict()
+                group['criacao']['criado_em'] = dialog.entity.date.strftime('%Y-%m-%d %H:%M:%S')
+                group['criacao']['timestamp'] = int(datetime.datetime.timestamp(dialog.entity.date))
+                group['titulo'] = dialog.entity.title
+                group['dia_coleta'] = now.strftime('%Y-%m-%d')
                 
                 if dialog.is_channel:  groupType = "channel"
                 if dialog.is_group:    groupType = "group"
-                group['group_type'] = groupType
+                group['tipo'] = groupType
                
                 print(group)
                 
@@ -116,7 +136,7 @@ class GroupMetadataCollector():
                     async for member in client.iter_participants(dialog):
                         user = dict()
                         #TODO: changed some stuff here.
-                        user['id'] = member.id
+                        user['user_id'] = member.id
                         user['username'] = member.username
                         user['first_name'] = member.first_name
                         user['last_name'] = member.last_name
@@ -177,10 +197,10 @@ async def main():
                         help="Flag para listar quem sÃo os usuários ")
 
     parser.add_argument("--api_id", type=str,
-                        help="ID da API de Coleta gerado em my.telegram.org (Dado sensível)")
+                        help="ID da API de Coleta gerado em my.telegram.org (Dado sensível)", default='')
 
     parser.add_argument("--api_hash", type=str,
-                        help="Hash da API de Coleta gerado em my.telegram.org (Dado sensível)")
+                        help="Hash da API de Coleta gerado em my.telegram.org (Dado sensível)", default='')
 
     parser.add_argument("-j", "--json", type=str,
                         help="Caminho para um arquivo json de configuração de "
