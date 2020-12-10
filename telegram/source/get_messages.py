@@ -100,11 +100,22 @@ class TelegramCollector():
             print('Collection mode invalid <%s>!! Using <continuous> instead' %
                   (args_dict["collection_mode"]))
             args_dict["collection_mode"] = 'continuous'
-        if args_dict["write_mode"] not in ['both', 'day', 'group']:
-            print('Save mode invalid <%s>!! Using <both> instead' % (
+        if args_dict["write_mode"] not in ['both', 'day', 'group', 'kafka']:
+            print('Save mode invalid <%s>!! Using <kafka> instead' % (
                 args_dict["write_mode"]))
-            args_dict["write_mode"] = 'both'
+            args_dict["write_mode"] = 'kafka'
 
+        if (args_dict["api_id"] == '' or args_dict["api_id"] == None) or (args_dict["api_hash"] == '' or args_dict["api_hash"] == None):
+            keys_file = '/config/credentials.json' 
+            if os.path.isfile(keys_file):
+                with open(keys_file, 'r') as fin:
+                    keys_args = json.load(fin)
+                    args_dict["api_id"]   = keys_args["api_id"]
+                    args_dict["api_hash"] = keys_args["api_hash"]
+            else:
+                print('No credentials provided: api_id, api_hash\nUnable to connect to Telegram API...')
+                sys.exit(1)
+            
         self.collection_mode       = args_dict["collection_mode"]
         self.start_date            = args_dict["start_date"]
         self.end_date              = args_dict["end_date"]
@@ -123,12 +134,20 @@ class TelegramCollector():
         self.process_other_hashes  = args_dict["process_other_hashes"]
         self.api_id                = args_dict["api_id"]
         self.api_hash              = args_dict["api_hash"]
+        self.data_path              = args_dict["datalake"]
         
         self.save_file             = False
         self.save_kafka            = True
         self.kafka                 = KafkaManager()
         self.producer              = self.kafka.connect_kafka_producer()
 
+        #SAVING CREDENTIALS FOR FUTURE
+        with open('/config/credentials.json' , "w") as json_file:
+            api_dict = dict()
+            api_dict["api_id"]    = args_dict["api_id"]
+            api_dict["api_hash"]  = args_dict["api_hash"]
+            json.dump(api_dict, json_file)
+           
     def _get_load_messages(self, path='/data/mid_file.txt'):
         """
         Carrega e retorna um conjunto de ids das mensagens já coletadas.
@@ -193,62 +212,63 @@ class TelegramCollector():
         
         item = dict()
         try: 
-            item["group_id"] = message.to_id.chat_id
+            item["grupo_id"] = message.to_id.chat_id
         except:
-            item["group_id"] = message.to_id.channel_id
+            item["grupo_id"] = message.to_id.channel_id
                 
-        item["message_id"] = message.id
-        item["group_name"] = dialog_name
+        item["identificador"] = message.id
+        item["mensagem_id"] = message.id
+        item["grupo_nome"] = dialog_name
         
         #print(message)
         #print(message.from_id)
         try:
-            item["sender"]     = message.from_id.user_id
+            item["enviado_por"]     = message.from_id.user_id
         except:
-            item["sender"]     = str(message.to_id.channel_id)
+            item["enviado_por"]     = str(message.to_id.channel_id)
 
         
-        item["data"]       = message.date.strftime("%Y-%m-%d %H:%M:%S")
-        item["content"]    = message.message 
-        item["file"] = None
-        item["mediatype"] = None
+        item["criado_em"]       = message.date.strftime("%Y-%m-%d %H:%M:%S")
+        item["texto"]    = message.message 
+        item["arquivo"] = None
+        item["formato"] = None
         item["phash"] = None
         item["checksum"] = None
         
         if message.media:
             if message.photo:
-                base_path = "/data/image/"
-                item["mediatype"] = "image"
+                base_path = self.data_path+"image/"
+                item["formato"] = "image"
             elif message.audio or message.voice:
-                base_path = "/data/audio/"
-                item["mediatype"] = "audio"
+                base_path = self.data_path+"audio/"
+                item["formato"] = "audio"
             elif message.video or message.video_note:
-                base_path = "/data/video/"
-                item["mediatype"] = "video"
+                base_path = self.data_path+"video/"
+                item["formato"] = "video"
             else:
-                base_path = "/data/others/"
-                item["mediatype"] = "other"
+                base_path = self.data_path+"others/"
+                item["formato"] = "other"
 
-            if (item["mediatype"] == "image" and self.collect_images) or \
-                    (item["mediatype"] == "audio" and self.collect_audios) or \
-                    (item["mediatype"] == "video" and self.collect_videos) or \
-                    (item["mediatype"] == "other" and self.collect_others):
-                path = os.path.join(base_path, message.date.strftime("%Y-%m-%d"), str(item["message_id"]))
+            if (item["formato"] == "image" and self.collect_images) or \
+                    (item["formato"] == "audio" and self.collect_audios) or \
+                    (item["formato"] == "video" and self.collect_videos) or \
+                    (item["formato"] == "other" and self.collect_others):
+                path = os.path.join(base_path, message.date.strftime("%Y-%m-%d"), str(item["identificador"]))
                 try:
                     file_path = await message.download_media(path)
                     
                     if file_path:
                         if os.path.isfile(file_path): 
                             
-                            item["file"] = file_path.split("/")[-1]
+                            item["arquivo"] = file_path.split("/")[-1]
 
                             if file_path != None and (
-                                    (item["mediatype"] == "image" and self.process_image_hashes) or 
-                                    (item["mediatype"] == "audio" and self.process_audio_hashes) or 
-                                    (item["mediatype"] == "video" and self.process_video_hashes) or 
-                                    (item["mediatype"] == "other" and self.process_other_hashes)):
+                                    (item["formato"] == "image" and self.process_image_hashes) or 
+                                    (item["formato"] == "audio" and self.process_audio_hashes) or 
+                                    (item["formato"] == "video" and self.process_video_hashes) or 
+                                    (item["formato"] == "other" and self.process_other_hashes)):
                                 item["checksum"] = md5(file_path)
-                                if item["mediatype"] == "image":
+                                if item["formato"] == "image":
                                     try: 
                                         item["phash"] = str(imagehash.phash(Image.open(file_path)))
                                     except:
@@ -258,9 +278,8 @@ class TelegramCollector():
                     item["phash"] = None
                     item["checksum"] = None
                 
-            print(item)
-        # Save message on group ID file
-        
+        print(item)
+
         if self.save_kafka:
             topic = self.kafka.get_topic('telegram' , 'mensagem')
             json_dump_object = json.dumps(item)
@@ -268,7 +287,7 @@ class TelegramCollector():
             
         if self.save_file:
             if self.write_mode == "group" or self.write_mode == "both":
-                message_group_filename = os.path.join(group_path, "mensagens_grupo_" + str(item["group_id"]) + ".json" )
+                message_group_filename = os.path.join(group_path, "mensagens_grupo_" + str(item["grupo_id"]) + ".json" )
 
                 
                 # Save message on file for all messages of the group
@@ -299,26 +318,26 @@ class TelegramCollector():
         """
         notification = dict()
 
-        notification["message_id"] = message.id
+        notification["identificador"] = message.id
         
         try: 
-            notification["group_id"] = message.to_id.chat_id
+            notification["grupo_id"] = message.to_id.chat_id
         except:
-            notification["group_id"] = message.to_id.channel_id
-        notification["date"] = message.date.strftime("%Y-%m-%d %H:%M:%S")       
-        notification["action"] = {"action_class" : type(message.action).__name__ , 
+            notification["grupo_id"] = message.to_id.channel_id
+        notification["enviado_em"] = message.date.strftime("%Y-%m-%d %H:%M:%S")       
+        notification["acao"] = {"action_class" : type(message.action).__name__ , 
                                   "fields" : message.action.__dict__}
                                   
         
         try:
-            notification["sender"] = message.from_id.user_id
+            notification["enviado_por"] = message.from_id.user_id
         except:
-            notification["sender"] = str(message.to_id.channel_id)
+            notification["enviado_por"] = str(message.to_id.channel_id)
             
-        #notification["sender"] = message.from_id.user_id
+        #notification["enviado_por"] = message.from_id.user_id
 
         notification_group_filename = os.path.join(
-            path, "notificacoes_grupo_" + str(notification["group_id"]) + ".json" )
+            path, "notificacoes_grupo_" + str(notification["grupo_id"]) + ".json" )
 
         if self.save_file:
             #Save message on file for all messages of the group
@@ -328,7 +347,7 @@ class TelegramCollector():
                 print("", file=json_file)
  
         if self.save_kafka:
-            topic = self.kafka.get_topic('telegram' , 'mensagem')
+            topic = self.kafka.get_topic('telegram' , 'notificacao')
             json_dump_object = json.dumps(notification)
             self.kafka.publish_kafka_message(self.producer, topic, 'raw', json_dump_object)
 
@@ -375,10 +394,10 @@ class TelegramCollector():
 
         # Create data directories
         pathlib.Path("/data/mensagens").mkdir(parents=True, exist_ok=True)
-        pathlib.Path("/data/image").mkdir(parents=True, exist_ok=True)
-        pathlib.Path("/data/others").mkdir(parents=True, exist_ok=True)
-        pathlib.Path("/data/audio").mkdir(parents=True, exist_ok=True)
-        pathlib.Path("/data/video").mkdir(parents=True, exist_ok=True)
+        pathlib.Path(self.data_path+"image").mkdir(parents=True, exist_ok=True)
+        pathlib.Path(self.data_path+"others").mkdir(parents=True, exist_ok=True)
+        pathlib.Path(self.data_path+"audio").mkdir(parents=True, exist_ok=True)
+        pathlib.Path(self.data_path+"video").mkdir(parents=True, exist_ok=True)
         pathlib.Path("/data/mensagens_grupo").mkdir(parents=True, exist_ok=True)
         pathlib.Path("/data/notificacoes").mkdir(parents=True, exist_ok=True)
 
@@ -501,11 +520,16 @@ async def main():
                         " coleta", default=[])
 
     parser.add_argument("--api_id", type=str,
-                        help="ID da API de Coleta gerado em my.telegram.org (Dado sensível)")
+                        help="ID da API de Coleta gerado em my.telegram.org (Dado sensível)", default='')
 
     parser.add_argument("--api_hash", type=str,
-                        help="Hash da API de Coleta gerado em my.telegram.org (Dado sensível)")
+                        help="Hash da API de Coleta gerado em my.telegram.org (Dado sensível)", default='')
 
+    
+    parser.add_argument("--datalake", type=str,
+                        help="Local para salvar as midias",
+                        default='/data/')
+                        
     parser.add_argument("-j", "--json", type=str,
                         help="Caminho para um arquivo json de configuração de "
                         "execução. Individualmente, as opções presentes no "
