@@ -71,11 +71,21 @@ class GroupMetadataCollector():
         self.api_hash              = args_dict["api_hash"]
         self.profile_pic           = args_dict["profile_pic"]
         self.profiles              = args_dict["profiles"]
+        self.data_path             = args_dict["datalake"]
+        self.bootstrap_servers     = args_dict["bootstrap_servers"]
+
+
         self.save_file             = False
         self.save_kafka            = True
         self.kafka                 = KafkaManager()
+        if len(args_dict["bootstrap_servers"]) > 1:
+            self.bootstrap_servers     = args_dict["bootstrap_servers"]
+            self.kafka.update_servers(self.bootstrap_servers )
+        if len(args_dict["bootstrap_servers"]) == 1:
+            self.bootstrap_servers     = args_dict["bootstrap_servers"][0].split(',')
+            self.kafka.update_servers(self.bootstrap_servers )
         self.producer              = self.kafka.connect_kafka_producer()
-
+        
         #SAVING CREDENTIALS FOR FUTURE
         with open('/config/credentials.json' , "w") as json_file:
             api_dict = dict()
@@ -214,6 +224,13 @@ async def main():
                         "arquivo sobescreveram os argumentos de linha de "
                         "comando, caso eles sejam fornecidos.")
 
+    parser.add_argument("--datalake", type=str,
+                        help="Local para salvar as midias",
+                        default='/data/')
+                        
+    parser.add_argument("--bootstrap_servers", nargs="+",
+                        help="Lista de endereço para conexão dos servers Kafka"
+                        " (Brokers)", default=[])
     args = parser.parse_args()
     
     print("Inicializando coletor de metadados")
