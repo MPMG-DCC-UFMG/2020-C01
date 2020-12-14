@@ -118,6 +118,7 @@ class WhatsappCollector():
             args_dict["write_mode"] = 'both'
         
         
+        
         self.collection_mode       = args_dict["collection_mode"]
         self.start_date            = args_dict["start_date"]
         self.end_date              = args_dict["end_date"]
@@ -134,12 +135,20 @@ class WhatsappCollector():
         self.process_video_hashes  = args_dict["process_video_hashes"]
         self.profile               = args_dict["profile"]
         self.data_path             = args_dict["datalake"]
+        self.bootstrap_servers     = args_dict["bootstrap_servers"]
 
 
         self.save_file             = False
         self.save_kafka            = True
         self.kafka                 = KafkaManager()
+        if len(args_dict["bootstrap_servers"]) > 1:
+            self.bootstrap_servers     = args_dict["bootstrap_servers"]
+            self.kafka.update_servers(self.bootstrap_servers )
+        if len(args_dict["bootstrap_servers"]) == 1:
+            self.bootstrap_servers     = args_dict["bootstrap_servers"][0].split(',')
+            self.kafka.update_servers(self.bootstrap_servers )
         self.producer              = self.kafka.connect_kafka_producer()
+        
         
     def _process_string(self, string):
         """
@@ -900,7 +909,12 @@ def main():
                         help="Local para salvar arquivos de midia",
                         default='/data/')
 
+    parser.add_argument("--bootstrap_servers", nargs="+",
+                        help="Lista de endereço para conexão dos servers Kafka"
+                        " (Brokers)", default=[])
 
+
+                        
     parser.add_argument("-j", "--json", type=str,
                         help="Caminho para um arquivo json de configuração de "
                         "execução. Individualmente, as opções presentes no "

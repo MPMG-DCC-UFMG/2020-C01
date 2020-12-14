@@ -3,6 +3,12 @@ from __future__ import print_function
 from builtins import str
 from webwhatsapi import WhatsAPIDriver
 
+
+from kafka_functions import KafkaManager
+from kafka import KafkaConsumer
+from kafka import KafkaProducer
+
+
 import datetime
 import os
 import pathlib
@@ -61,7 +67,22 @@ class GroupMetadataCollector():
             json_args = json.loads(args.json_string)
             args_dict.update(json_args)
 
-        self.group_blacklist = args_dict["group_blacklist"]
+        self.data_path           = args_dict["datalake"]
+        self.group_blacklist     = args_dict["group_blacklist"]
+        self.bootstrap_servers   = args_dict["bootstrap_servers"]
+
+
+        self.save_file             = False
+        self.save_kafka            = True
+        self.kafka                 = KafkaManager()
+        if len(args_dict["bootstrap_servers"]) > 1:
+            self.bootstrap_servers     = args_dict["bootstrap_servers"]
+            self.kafka.update_servers(self.bootstrap_servers )
+        if len(args_dict["bootstrap_servers"]) == 1:
+            self.bootstrap_servers     = args_dict["bootstrap_servers"][0].split(',')
+            self.kafka.update_servers(self.bootstrap_servers )
+        self.producer              = self.kafka.connect_kafka_producer()
+        
 
     def _process_string(self, string):
         """
@@ -145,32 +166,40 @@ class GroupMetadataCollector():
                 participants = list()
                 for member in driver.group_get_participants(_id):
                     user = dict()
-                    user['nome'] = member.verified_name
-                    user['nome_curto'] = member.short_name
+                    user['name'] = member.verified_name
+                    user['short_name'] = member.short_name
                     user['nome_formatado'] = member.formatted_name
-                    user['telefone'] = member.id
+                    user['number'] = member.id
                     user['isBusiness'] = member.is_business
                     user['profile_pic'] = member.profile_pic
                     participants.append(user)
 
-                group['grupo_id'] = _id
-                group['criador'] = creator
-                group['tipo'] = kind
-                group['criacao'] = dict()
-                group['criacao']['criado_em'] = str_date
-                group['criacao']['timestamp'] = timestamp
-                group['titulo'] = name
-                group['membros'] = participants
+                group['group_id'] = _id
+                group['creator'] = creator
+                group['kind'] = kind
+                group['creation'] = dict()
+                group['creation']['creation_date'] = str_date
+                group['creation']['creation_timestamp'] = timestamp
+                group['title'] = name
+                group['members'] = participants
 
                 path = '/data/grupos/'
                 filename = '%sgrupos_%s.json' % (path, _id.split('@')[0].strip())
                 print(group)
-                with open(filename, 'w') as json_file:
-                    json.dump(group, json_file)
-                    print('', file=json_file)
-                with open(all_groups_filename, 'a') as json_file:
-                    json.dump(group, json_file)
-                    print('', file=json_file)
+                
+                if self.save_kafka:
+                    topic = self.kafka.get_topic('whatsapp' , 'grupo')
+                    json_dump_object = json.dumps(group)
+                    self.kafka.publish_kafka_message(self.producer, topic, 'raw', json_dump_object)
+            
+                
+                if self.save_file:
+                    with open(filename, 'w') as json_file:
+                        json.dump(group, json_file)
+                        print('', file=json_file)
+                    with open(all_groups_filename, 'a') as json_file:
+                        json.dump(group, json_file)
+                        print('', file=json_file)
 
             driver.close()
         except Exception as e:
@@ -197,6 +226,15 @@ def main():
                         " execução. Individualmente, as opções presentes no "
                         "arquivo sobescreveram os argumentos de linha de "
                         "comando, caso eles sejam fornecidos.")
+
+    parser.add_argument("-d", "--datalake", type=str,
+                        help="Local para salvar arquivos de midia",
+                        default='/data/')
+
+    parser.add_argument("--bootstrap_servers", nargs="+",
+                        help="Lista de endereço para conexão dos servers Kafka"
+                        " (Brokers)", default=[])
+
 
     args = parser.parse_args()
 
