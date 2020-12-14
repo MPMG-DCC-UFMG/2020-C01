@@ -136,9 +136,17 @@ class TelegramCollector():
         self.api_hash              = args_dict["api_hash"]
         self.data_path              = args_dict["datalake"]
         
+
+
         self.save_file             = False
         self.save_kafka            = True
         self.kafka                 = KafkaManager()
+        if len(args_dict["bootstrap_servers"]) > 1:
+            self.bootstrap_servers     = args_dict["bootstrap_servers"]
+            self.kafka.update_servers(self.bootstrap_servers )
+        if len(args_dict["bootstrap_servers"]) == 1:
+            self.bootstrap_servers     = args_dict["bootstrap_servers"][0].split(',')
+            self.kafka.update_servers(self.bootstrap_servers )
         self.producer              = self.kafka.connect_kafka_producer()
 
         #SAVING CREDENTIALS FOR FUTURE
@@ -217,7 +225,6 @@ class TelegramCollector():
             item["grupo_id"] = message.to_id.channel_id
                 
         item["identificador"] = message.id
-        item["mensagem_id"] = message.id
         item["grupo_nome"] = dialog_name
         
         #print(message)
@@ -525,10 +532,14 @@ async def main():
     parser.add_argument("--api_hash", type=str,
                         help="Hash da API de Coleta gerado em my.telegram.org (Dado sensível)", default='')
 
-    
     parser.add_argument("--datalake", type=str,
                         help="Local para salvar as midias",
                         default='/data/')
+                        
+    parser.add_argument("--bootstrap_servers", nargs="+",
+                        help="Lista de endereço para conexão dos servers Kafka"
+                        " (Brokers)", default=[])
+
                         
     parser.add_argument("-j", "--json", type=str,
                         help="Caminho para um arquivo json de configuração de "

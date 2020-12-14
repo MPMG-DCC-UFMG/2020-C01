@@ -52,8 +52,8 @@ class KafkaManager():
         """
         
         #self.KAFKA_SERVERS            = ['192.168.99.100:9092'] #Server padrão para testes
-        #self.KAFKA_SERVERS            = [('hadoopdn-gsi-prod0' + str(j) + '.mpmg.mp.br:6667').replace('010', '10') for j in range(4, 10 + 1)]
-        self.KAFKA_SERVERS            = ['hadoopdn-gsi-prod04.mpmg.mp.br:6667'] 
+        self.KAFKA_SERVERS            = [('hadoopdn-gsi-prod0' + str(j) + '.mpmg.mp.br:6667').replace('010', '10') for j in range(4, 10 + 1)]
+        #self.KAFKA_SERVERS            = ['hadoopdn-gsi-prod04.mpmg.mp.br:6667'] 
         self.KAFKA_TOPIC_STATUS_OK    = "crawler_status_ok"
         self.KAFKA_TOPIC_STATUS_ERROR = "crawler_status_error"
 
@@ -65,7 +65,7 @@ class KafkaManager():
         '''
 
         # usage example:
-        # publish_message(producer, 'crawler_telegram_mensagem', 'raw', json_string)
+        # publish_message(producer, 'crawler_whatsapp_mensagem', 'raw', json_string)
         sent = False
         
         if  producer  is not None:
@@ -130,6 +130,11 @@ class KafkaManager():
             raise Exception('Kafka Error!! Topic for social network %s and entity %s not found.' %(socialnetwork, entity))
         
         return kafka_topic
+        
+    def update_servers(self, server_list):
+        self.KAFKA_SERVERS = server_list
+        print("Kafka Servers set to", server_list )
+        return True
         
     def create_error_file(self, crawling_id, error_document):
         try:
