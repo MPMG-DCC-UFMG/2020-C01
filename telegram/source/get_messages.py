@@ -170,7 +170,7 @@ class TelegramCollector():
         if os.path.isfile(path):
             with open(path, 'r') as fin:
                 for line in fin:
-                    messagesIDs.add(int(line.strip()))
+                    messagesIDs.add((line.strip()))
 
         return messagesIDs
 
@@ -430,6 +430,9 @@ class TelegramCollector():
                             if dialog.is_channel: inst = 'channel'
                             print("Collecting mssages for " + str(inst) + ":" + str(dialog.id) + " - " + str(dialog.title))
                             async for message in client.iter_messages(dialog):
+                            
+                                new_id = str(dialog.id)+'_'+str(message.id )
+                                message.id = new_id
                                 if (message.date < start_date):
                                     break
                                 if (message.date > end_date and self.collection_mode == 'period'):
