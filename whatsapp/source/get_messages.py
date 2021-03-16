@@ -115,7 +115,7 @@ class WhatsappCollector():
         if args_dict["write_mode"] not in ['both', 'day', 'group', 'kafka']:
             print('Save mode invalid <%s>!! Using <kafka> instead' % (
                 args_dict["write_mode"]))
-            args_dict["write_mode"] = 'both'
+            args_dict["write_mode"] = 'kafka'
         
         
         
@@ -137,18 +137,21 @@ class WhatsappCollector():
         self.data_path             = args_dict["datalake"]
         self.bootstrap_servers     = args_dict["bootstrap_servers"]
 
-
-        self.save_file             = False
-        self.save_kafka            = True
-        self.kafka                 = KafkaManager()
-        if len(args_dict["bootstrap_servers"]) > 1:
-            self.bootstrap_servers     = args_dict["bootstrap_servers"]
-            self.kafka.update_servers(self.bootstrap_servers )
-        if len(args_dict["bootstrap_servers"]) == 1:
-            self.bootstrap_servers     = args_dict["bootstrap_servers"][0].split(',')
-            self.kafka.update_servers(self.bootstrap_servers )
-        self.producer              = self.kafka.connect_kafka_producer()
         
+        if self.write_mode == 'kafka' or self.write_mode == 'both':
+            self.save_file             = False
+            self.save_kafka            = True
+            self.kafka                 = KafkaManager()
+            if len(args_dict["bootstrap_servers"]) > 1:
+                self.bootstrap_servers     = args_dict["bootstrap_servers"]
+                self.kafka.update_servers(self.bootstrap_servers )
+            if len(args_dict["bootstrap_servers"]) == 1:
+                self.bootstrap_servers     = args_dict["bootstrap_servers"][0].split(',')
+                self.kafka.update_servers(self.bootstrap_servers )
+            self.producer              = self.kafka.connect_kafka_producer()
+        else:
+            self.save_file             = True
+            self.save_kafka            = False
         
     def _process_string(self, string):
         """
@@ -198,12 +201,13 @@ class WhatsappCollector():
         """
         if message.type == 'image':
             date = self._get_date_from_message(message).split(' ')[0]
-            out_folder = path+date+'/'
-            pathlib.Path(out_folder).mkdir(parents=True, exist_ok=True)
-
+            
             filename = self._generate_unique_filename(
                 message, message.filename)
             message.filename = filename
+            
+            out_folder = join(path, filename.split('/')[0])
+            pathlib.Path(out_folder).mkdir(parents=True, exist_ok=True)
             if not os.path.isfile(path+filename):
                 message.save_media(path, force_download=True)
 
@@ -220,12 +224,13 @@ class WhatsappCollector():
         """
         if message.type == 'video':
             date = self._get_date_from_message(message).split(' ')[0]
-            out_folder = path+date+'/'
-            pathlib.Path(out_folder).mkdir(parents=True, exist_ok=True)
-
+            
             filename = self._generate_unique_filename(
                 message, message.filename)
             message.filename = filename
+            
+            out_folder = join(path, filename.split('/')[0])
+            pathlib.Path(out_folder).mkdir(parents=True, exist_ok=True)
             if not os.path.isfile(path+filename):
                 message.save_media(path, force_download=True)
 
@@ -242,11 +247,13 @@ class WhatsappCollector():
         """
         if message.type == 'audio' or message.type == 'ptt':
             date = self._get_date_from_message(message).split(' ')[0]
-            out_folder = path+date+'/'
-            pathlib.Path(out_folder).mkdir(parents=True, exist_ok=True)
+            
             filename = self._generate_unique_filename(
                 message, message.filename)
             message.filename = filename
+            
+            out_folder = join(path, filename.split('/')[0])
+            pathlib.Path(out_folder).mkdir(parents=True, exist_ok=True)
             if not os.path.isfile(path+filename):
                 message.save_media(path, force_download=True)
 
@@ -297,7 +304,7 @@ class WhatsappCollector():
             with open(path+f, 'r') as fin:
                 for line in fin:
                     data = json.loads(line.strip())
-                    mid = data['message_id']
+                    mid = data['identificador']
                     messagesIDs[ID].add(mid)
 
         return messagesIDs
@@ -414,7 +421,7 @@ class WhatsappCollector():
             notification['received_by'] = from_user
 
             n_date = notification['criado_em'].split(' ')[0]
-            all_notification_filename = '/data/all_notificacoes_%s.json' % \
+            all_notification_filename = '/data/all_notificacoes/all_notificacoes_%s.json' % \
                 (n_date)
 
             if message._js_obj['recipients']:
@@ -459,7 +466,7 @@ class WhatsappCollector():
                     json_dump_object = json.dumps(notification)
                     self.kafka.publish_kafka_message(self.producer, topic, 'raw', json_dump_object)
                 
-                if self.save_file:
+                if True:
                     filename = '%snotificacoes_%s.json' % (path, gid)
                     with open(filename, 'a') as json_file:
                         json.dump(notification, json_file)
@@ -652,6 +659,7 @@ class WhatsappCollector():
         pathlib.Path(self.data_path+"video").mkdir(parents=True, exist_ok=True)
         pathlib.Path(self.data_path+"mensagens_grupo").mkdir(parents=True, exist_ok=True)
         pathlib.Path(self.data_path+"notificacoes").mkdir(parents=True, exist_ok=True)
+        pathlib.Path(self.data_path+"all_notificacoes").mkdir(parents=True, exist_ok=True)
         pathlib.Path("/data/mids").mkdir(parents=True, exist_ok=True)
 
         min_date = self.start_date
@@ -862,7 +870,7 @@ def main():
                         " \'period\').", default='2999-12-31')
 
     parser.add_argument("-w", "--write_mode", type=str,
-                        help="Modo de salvamento das mensagens no arquivos de saída(\'both\', \'day\', \'group\'). ", default='kafka')
+                        help="Modo de salvamento das mensagens no arquivos de saída(\'both\', \'day\', \'group\', \'kafka\'). ", default='kafka')
 
     parser.add_argument("--collect_messages", type=bool,
                         help="Se mensagens de texto devem ser coletadas"
