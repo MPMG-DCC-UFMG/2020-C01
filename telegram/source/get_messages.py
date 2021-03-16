@@ -27,48 +27,48 @@ def md5(fname):
 class TelegramCollector():
     """
     Classe que encapsula o coletor de grupos do Telegram. Possui
-    o método principal que realiza a leitura da entrada e faz a
-    coleta das mensagens, mídias e notificações.
+    o metodo principal que realiza a leitura da entrada e faz a
+    coleta das mensagens, midias e notificacoes.
     Atributos
     -----------
     collection_mode : str
-            Modo de coleção a ser utilizado ("period" ou "unread" ou 
+            Modo de colecao a ser utilizado ("period" ou "unread" ou 
             "continuous").
     start_date : str
-            Data de início do período de coleta (Modo "period").
+            Data de inicio do periodo de coleta (Modo "period").
     end_date : str
-            Data de término do período de coleta (Modo "period").
+            Data de termino do periodo de coleta (Modo "period").
     group_blacklist : list
-            Lista de ids de grupos que devem ser excluídos da coleta.
+            Lista de ids de grupos que devem ser excluidos da coleta.
     user_blacklist : list
-            Lista de ids de usuários que devem ser excluídos da coleta.
+            Lista de ids de usuarios que devem ser excluidos da coleta.
     collect_messages : bool
-            Se mensagens de texto devem ser coletadas durante a execução.
+            Se mensagens de texto devem ser coletadas durante a execucao.
     collect_audios : bool
-            Se áudios devem ser coletadas durante a execução.
+            Se audios devem ser coletadas durante a execucao.
     collect_videos : bool
-            Se vídeos devem ser coletadas durante a execução.
+            Se videos devem ser coletadas durante a execucao.
     collect_images : bool
-            Se imagens devem ser coletadas durante a execução.
+            Se imagens devem ser coletadas durante a execucao.
     collect_notifications : bool
-            Se notificações devem ser coletadas durante a execução.
+            Se notificacoes devem ser coletadas durante a execucao.
     process_audio_hashes : bool
-            Se hashes de áudios devem ser calculados durante a execução.
+            Se hashes de audios devem ser calculados durante a execucao.
     process_image_hashes : bool
-            Se hashes de imagens devem ser calculados durante a execução.
+            Se hashes de imagens devem ser calculados durante a execucao.
     process_video_hashes : bool
-            Se hashes de vídeos devem ser calculados durante a execução.
+            Se hashes de videos devem ser calculados durante a execucao.
     api_id : str
-            ID da API de Coleta gerado em my.telegram.org (Dado sensível).
+            ID da API de Coleta gerado em my.telegram.org (Dado sensivel).
     api_hash : str
-            Hash da API de Coleta gerado em my.telegram.org (Dado sensível).
+            Hash da API de Coleta gerado em my.telegram.org (Dado sensivel).
     
-    Métodos
+    Metodos
     -----------
     Faz a coleta das mensagens de grupos de Telegram de acordo
-    com os parâmetros fornecidos na criação do objeto de coleta.
+    com os parametros fornecidos na criacao do objeto de coleta.
 
-        Parâmetros
+        Parametros
         ------------
             profile_path : str
                 Caminho para um profile alternativo do navegador
@@ -79,10 +79,10 @@ class TelegramCollector():
         """
         Inicializa o objeto
 
-        Parâmetros
+        Parametros
         ------------
             args : argparse.Namespace()
-                Objeto com atributos que contém os argumentos de linha de
+                Objeto com atributos que contem os argumentos de linha de
                 comando fornecidos.
         """
         args_dict = vars(args)
@@ -158,9 +158,9 @@ class TelegramCollector():
            
     def _get_load_messages(self, path='/data/mid_file.txt'):
         """
-        Carrega e retorna um conjunto de ids das mensagens já coletadas.
+        Carrega e retorna um conjunto de ids das mensagens ja coletadas.
 
-        Parâmetros
+        Parametros
         ------------
             path : str
                 Caminho para o arquivo contendo os ids das mensagens.
@@ -176,9 +176,9 @@ class TelegramCollector():
 
     def _save_processed_ids(self, id_set, path='/data/mid_file.txt'):
         """
-        Salva o conjunto de ids das mensagens já coletadas.
+        Salva o conjunto de ids das mensagens ja coletadas.
 
-        Parâmetros
+        Parametros
         ------------
             path : str
                 Caminho para o arquivo contendo os ids das mensagens.
@@ -195,7 +195,7 @@ class TelegramCollector():
         """
         Salva um novo id de uma mensagem coletada.
 
-        Parâmetros
+        Parametros
         ------------
             path : str
                 Caminho para o arquivo contendo os ids das mensagens.
@@ -207,14 +207,14 @@ class TelegramCollector():
         """
         Escreve em formato json a mensagem coletada no arquivo
         referente ao grupo em que ela foi enviada. Caso o arquivo do grupo
-        ainda não exista, ele será criado.
-        Parâmetros
+        ainda nao exista, ele sera criado.
+        Parametros
         ------------
             message : telethon.tl.custom.message.Message()
                 Objeto da mensagem coletada.
             group_path : str
                 Caminho da pasta em que os arquivos de mensagens por grupo
-                serão escritos.
+                serao escritos.
         """
         #print(message) #log message
         
@@ -237,9 +237,9 @@ class TelegramCollector():
         
         item["criado_em"]       = message.date.strftime("%Y-%m-%d %H:%M:%S")
         item["texto"]    = message.message 
-        item["arquivo"] = None
-        item["formato"] = None
-        item["phash"] = None
+        item["arquivo"]  = None
+        item["formato"]  = None
+        item["phash"]    = None
         item["checksum"] = None
         
         if message.media:
@@ -312,15 +312,15 @@ class TelegramCollector():
     
     def _save_notification(self, message, path='/data/notificacoes/'):
         """
-        Escreve em formato json a notificação contida na mensagem no arquivo
+        Escreve em formato json a notificacao contida na mensagem no arquivo
         referente ao grupo em que ela foi enviada. Caso o arquivo do grupo
-        ainda não exista, ele será criado.
-        Parâmetros
+        ainda nao exista, ele sera criado.
+        Parametros
         ------------
             message : telethon.tl.custom.message.Message()
                 Objeto da mensagem coletada.
             path : str
-                Caminho da pasta em que os arquivos de notificações serão
+                Caminho da pasta em que os arquivos de notificacoes serao
                 escritos.
         """
         notification = dict()
@@ -348,7 +348,7 @@ class TelegramCollector():
 
         if self.save_file:
             #Save message on file for all messages of the group
-            #Não chamar, pois será salvo no kafka
+            #Nao chamar, pois sera salvo no kafka
             with open(notification_group_filename, "a") as json_file:
                 json.dump(notification, json_file)
                 print("", file=json_file)
@@ -387,16 +387,16 @@ class TelegramCollector():
 
         async for dialog in async_client.iter_dialogs():
             if ((dialog.is_group or dialog.is_channel) and dialog.title not in self.group_blacklist and
-                    str(abs(dialog.id)) not in self.group_blacklist):
-                #TODO: Check why dialog.id is a negative number
-                group_names[str(abs(dialog.id))] = dialog.title
+                    str(abs(dialog.entity.id)) not in self.group_blacklist):
+                    
+                group_names[str(abs(dialog.entity.id))] = dialog.title
 
         await async_client.run_until_disconnected()
 
     async def run(self):
         """
         Faz a coleta das mensagens de grupos de Telegram de acordo
-        com os parâmetros fornecidos na criação do objeto de coleta.
+        com os parametros fornecidos na criacao do objeto de coleta.
         """
 
         # Create data directories
@@ -422,16 +422,21 @@ class TelegramCollector():
                 
                     print("Susccessfully connected to API")
                     async for dialog in client.iter_dialogs():
-                        #TODO: Check why dialog.id is a negative number
-                        if ((dialog.is_group or dialog.is_channel) and dialog.title not in self.group_blacklist and
-                            str(abs(dialog.id)) not in self.group_blacklist):
+                        group_id = dialog.entity.id
+                        try:
+                            group_name = dialog.entity.title
+                        except:
+                            continue
+                            
+                        if ((dialog.is_group or dialog.is_channel) and dialog.entity.title not in self.group_blacklist and
+                            str(abs(group_id)) not in self.group_blacklist):
                             
                             if   dialog.is_group:   inst = 'group'
                             if dialog.is_channel: inst = 'channel'
-                            print("Collecting mssages for " + str(inst) + ":" + str(dialog.id) + " - " + str(dialog.title))
+                            print("Collecting mssages for " + str(inst) + ":" + str(group_id) + " - " + str(group_name))
                             async for message in client.iter_messages(dialog):
                             
-                                new_id = str(dialog.id)+'_'+str(message.id )
+                                new_id = str(group_id)+'_'+str(message.id )
                                 message.id = new_id
                                 if (message.date < start_date):
                                     break
@@ -466,93 +471,93 @@ async def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("-m", "--collection_mode", type=str,
-                        help="Modo de coleção a ser utilizado (\'period\'"
+                        help="Modo de colecao a ser utilizado (\'period\'"
                         " ou \'unread\' ou \'continuous\').",
                         default='continuous')
 
     parser.add_argument("-s", "--start_date", type=str,
-                        help="Data de início do período de coleta (Modo"
+                        help="Data de inicio do periodo de coleta (Modo"
                         " \'period\').", default='2000-01-01')
 
     parser.add_argument("-e", "--end_date", type=str,
-                        help="Data de término do período de coleta (Modo"
+                        help="Data de termino do periodo de coleta (Modo"
                         " \'period\').", default='2999-12-31')
 
     parser.add_argument("-w", "--write_mode", type=str,
-                        help="Modo de salvamento das mensagens no arquivos de saída(\'both\', \'day\', \'group\'). ", default='both')
+                        help="Modo de salvamento das mensagens no arquivos de saida(\'both\', \'day\', \'group\'). ", default='both')
 
     parser.add_argument("--collect_messages", type=bool,
                         help="Se mensagens de texto devem ser coletadas"
-                        " durante a execução.", default=True)
+                        " durante a execucao.", default=True)
 
     parser.add_argument("--collect_audios", type=bool,
                         help="Se audios devem ser coletadas durante a"
-                        " execução.", default=True)
+                        " execucao.", default=True)
 
     parser.add_argument("--collect_videos", type=bool,
                         help="Se videos devem ser coletadas durante a"
-                        " execução.", default=True)
+                        " execucao.", default=True)
 
     parser.add_argument("--collect_images", type=bool,
                         help="Se imagens devem ser coletadas durante a"
-                        " execução.", default=True)
+                        " execucao.", default=True)
 
     parser.add_argument("--collect_others", type=bool,
-                        help="Se outros tipos de mídia (e.g. documentos, stickers) devem "
-                        "ser coletadas durante a execução.", default=True)
+                        help="Se outros tipos de midia (e.g. documentos, stickers) devem "
+                        "ser coletadas durante a execucao.", default=True)
 
     parser.add_argument("--collect_notifications", type=bool,
-                        help="Se as notificações devem ser coletadas durante a"
-                        " execução.", default=True)
+                        help="Se as notificacoes devem ser coletadas durante a"
+                        " execucao.", default=True)
 
     parser.add_argument("--process_audio_hashes", type=bool,
                         help="Se hashes de audios devem ser calculados durante"
-                        " a execução.", default=True)
+                        " a execucao.", default=True)
 
     parser.add_argument("--process_image_hashes", type=bool,
                         help="Se hashes de imagens devem ser calculados"
-                        " durante a execução.", default=True)
+                        " durante a execucao.", default=True)
 
     parser.add_argument("--process_video_hashes", type=bool,
                         help="Se hashes de videos devem ser calculados durante"
-                        " a execução.", default=True)
+                        " a execucao.", default=True)
 
     parser.add_argument("--process_other_hashes", type=bool,
-                        help="Se hashes de outros tipos de mídiaa devem ser calculados durante"
-                        " a execução.", default=False)
+                        help="Se hashes de outros tipos de midiaa devem ser calculados durante"
+                        " a execucao.", default=False)
 
     parser.add_argument("--group_blacklist", nargs="+",
-                        help="Lista de ids de grupos que devem ser excluídos da"
+                        help="Lista de ids de grupos que devem ser excluidos da"
                         " coleta", default=[])
 
     parser.add_argument("--user_blacklist", nargs="+",
-                        help="Lista de usuários que devem ser excluídos da"
+                        help="Lista de usuarios que devem ser excluidos da"
                         " coleta", default=[])
 
     parser.add_argument("--api_id", type=str,
-                        help="ID da API de Coleta gerado em my.telegram.org (Dado sensível)", default='')
+                        help="ID da API de Coleta gerado em my.telegram.org (Dado sensivel)", default='')
 
     parser.add_argument("--api_hash", type=str,
-                        help="Hash da API de Coleta gerado em my.telegram.org (Dado sensível)", default='')
+                        help="Hash da API de Coleta gerado em my.telegram.org (Dado sensivel)", default='')
 
     parser.add_argument("--datalake", type=str,
                         help="Local para salvar as midias",
                         default='/data/')
                         
     parser.add_argument("--bootstrap_servers", nargs="+",
-                        help="Lista de endereço para conexão dos servers Kafka"
+                        help="Lista de endereco para conexao dos servers Kafka"
                         " (Brokers)", default=[])
 
                         
     parser.add_argument("-j", "--json", type=str,
-                        help="Caminho para um arquivo json de configuração de "
-                        "execução. Individualmente, as opções presentes no "
+                        help="Caminho para um arquivo json de configuracao de "
+                        "execucao. Individualmente, as opcoes presentes no "
                         "arquivo sobescreveram os argumentos de linha de "
                         "comando, caso eles sejam fornecidos.")
 
     parser.add_argument("--json_string", type=str,
-                        help="String contendo um json de configuração de"
-                        " execução. Individualmente, as opções presentes no "
+                        help="String contendo um json de configuracao de"
+                        " execucao. Individualmente, as opcoes presentes no "
                         "arquivo sobescreveram os argumentos de linha de "
                         "comando, caso eles sejam fornecidos.")
 
