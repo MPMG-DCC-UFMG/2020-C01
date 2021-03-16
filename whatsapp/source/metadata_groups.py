@@ -16,6 +16,10 @@ import json
 import argparse
 
 
+from os import listdir
+from os.path import isfile, join
+
+
 def smart_str(x):
     if isinstance(x, int) or isinstance(x, float):
         return str(x, "utf-8")
@@ -58,7 +62,13 @@ class GroupMetadataCollector():
         """
 
         args_dict = vars(args)
-
+        
+        if args_dict["write_mode"] not in ['both', 'file', 'kafka']:
+            print('Save mode invalid <%s>!! Using <kafka> instead' % (
+                args_dict["write_mode"]))
+            args_dict["write_mode"] = 'kafka'
+        
+        
         if args.json:
             with open(args.json) as json_file:
                 json_args = json.load(json_file)
@@ -68,20 +78,25 @@ class GroupMetadataCollector():
             args_dict.update(json_args)
 
         self.data_path           = args_dict["datalake"]
+        self.write_mode          = args_dict["write_mode"]
         self.group_blacklist     = args_dict["group_blacklist"]
         self.bootstrap_servers   = args_dict["bootstrap_servers"]
 
 
-        self.save_file             = False
-        self.save_kafka            = True
-        self.kafka                 = KafkaManager()
-        if len(args_dict["bootstrap_servers"]) > 1:
-            self.bootstrap_servers     = args_dict["bootstrap_servers"]
-            self.kafka.update_servers(self.bootstrap_servers )
-        if len(args_dict["bootstrap_servers"]) == 1:
-            self.bootstrap_servers     = args_dict["bootstrap_servers"][0].split(',')
-            self.kafka.update_servers(self.bootstrap_servers )
-        self.producer              = self.kafka.connect_kafka_producer()
+        if self.write_mode == 'kafka' or self.write_mode == 'both':
+            self.save_file             = False
+            self.save_kafka            = True
+            self.kafka                 = KafkaManager()
+            if len(args_dict["bootstrap_servers"]) > 1:
+                self.bootstrap_servers     = args_dict["bootstrap_servers"]
+                self.kafka.update_servers(self.bootstrap_servers )
+            if len(args_dict["bootstrap_servers"]) == 1:
+                self.bootstrap_servers     = args_dict["bootstrap_servers"][0].split(',')
+                self.kafka.update_servers(self.bootstrap_servers )
+            self.producer              = self.kafka.connect_kafka_producer()
+        else:
+            self.save_file             = True
+            self.save_kafka            = False
         
 
     def _process_string(self, string):
@@ -226,7 +241,10 @@ def main():
                         " execução. Individualmente, as opções presentes no "
                         "arquivo sobescreveram os argumentos de linha de "
                         "comando, caso eles sejam fornecidos.")
-
+    
+    parser.add_argument("-w", "--write_mode", type=str,
+                        help="Modo de salvamento das mensagens no arquivos de saída(\'file\', \'kafka\'). ", default='kafka')
+                        
     parser.add_argument("-d", "--datalake", type=str,
                         help="Local para salvar arquivos de midia",
                         default='/data/')
@@ -237,7 +255,8 @@ def main():
 
 
     args = parser.parse_args()
-
+    
+    
     try:
         collector = GroupMetadataCollector(args)
         collector.run()
