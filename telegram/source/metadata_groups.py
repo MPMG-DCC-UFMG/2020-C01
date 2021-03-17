@@ -14,6 +14,10 @@ import datetime
 import random
 import time
 
+from shutil import copyfile
+from os import listdir
+from os.path import isfile, join 
+
 class GroupMetadataCollector():
     """
     Classe que encapsula o coletor de metadados de grupos do Telegram. Possui
@@ -124,10 +128,17 @@ class GroupMetadataCollector():
         new_folder = '/data/metadata_grupos_%s/' % (now.strftime('%Y-%m-%d_%H-%M-%S'))
         pathlib.Path(new_folder).mkdir(parents=True, exist_ok=True)
         pathlib.Path(os.path.join(new_folder, "profile_pics")).mkdir(parents=True, exist_ok=True)
-
-        async with TelegramClient('/data/telegram_api', self.api_id, self.api_hash) as client:
+        
+        
+        if isfile('/data/telegram_api.session'):
+            copyfile('/data/telegram_api.session', 'telegram_api.session')
+            
+        async with TelegramClient('telegram_api', self.api_id, self.api_hash) as client:
             
             print("Login na API do Telegram realizado com sucesso. Coletando grupos")
+            if isfile('telegram_api.session'):
+                copyfile('telegram_api.session', '/data/telegram_api.session')
+                
             async for dialog in client.iter_dialogs():
                 WAIT_TIME = random.randint(10, 25)
                 await asyncio.sleep(WAIT_TIME)
