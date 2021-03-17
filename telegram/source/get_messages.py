@@ -17,6 +17,10 @@ import pytz
 import os
 import sys
 
+from shutil import copyfile
+from os import listdir
+from os.path import isfile, join 
+
 def md5(fname):
     hash_md5 = hashlib.md5()
     with open(fname, "rb") as f:
@@ -369,7 +373,15 @@ class TelegramCollector():
             self.kafka.publish_kafka_message(self.producer, topic, 'raw', json_dump_object)
 
     async def _run_unread_collector(self):
+        
+        if isfile('/data/telegram_api.session'):
+            copyfile('/data/telegram_api.session', 'telegram_api.session')
+        
         async_client = TelegramClient('telegram_api', self.api_id, self.api_hash)
+        
+        if isfile('telegram_api.session'):
+            copyfile('telegram_api.session', '/data/telegram_api.session')
+            
         group_names = {}
 
         @async_client.on(events.NewMessage)
@@ -425,12 +437,18 @@ class TelegramCollector():
 
         # Load previous saved messages
         previous_ids = self._get_load_messages()
+        if isfile('/data/telegram_api.session'):
+            copyfile('/data/telegram_api.session', 'telegram_api.session')
+        
         print("Starting " + self.collection_mode + " collection.")
         try:
             if (self.collection_mode != 'unread'):
                 async with TelegramClient('telegram_api', self.api_id, self.api_hash) as client:
                 
                     print("Susccessfully connected to API")
+                    if isfile('telegram_api.session'):
+                        copyfile('telegram_api.session', '/data/telegram_api.session')
+                    
                     async for dialog in client.iter_dialogs():
                         group_id = dialog.entity.id
                         try:
