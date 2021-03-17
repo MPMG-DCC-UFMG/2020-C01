@@ -121,7 +121,7 @@ class SummarizationUtil:
                 for line in fdata:
                     message = json.loads(line.strip())
 
-                    kind = message['mediatype']
+                    kind = message['tipo']
 
                     if media == kind:
                         if (media == 'image' or media == 'video' or
@@ -134,7 +134,7 @@ class SummarizationUtil:
                         if hash not in hashes:
                             hashes[hash] = dict()
                             hashes[hash][self.comparison_method] = hash
-                            hashes[hash]['first_share'] = message['data']
+                            hashes[hash]['first_share'] = message['criado_em']
                             hashes[hash]['total'] = 0
                             hashes[hash]['total_groups'] = 0
                             hashes[hash]['total_users'] = 0
@@ -144,13 +144,13 @@ class SummarizationUtil:
                             hashes[hash]['messages'] = list()
 
                         # ADD MESSAGE TO HASH
-                        if message['data'] < hashes[hash]['first_share']:
-                            hashes[hash]['first_share'] = message['data']
+                        if message['criado_em'] < hashes[hash]['first_share']:
+                            hashes[hash]['first_share'] = message['criado_em']
                         hashes[hash]['total'] += 1
                         hashes[hash]['groups_shared'].add(
-                            message['group_name'])
-                        hashes[hash]['users_shared'].add(message['sender'])
-                        hashes[hash]['filenames'].add(message['file'])
+                            message['titulo'])
+                        hashes[hash]['users_shared'].add(message['enviado_por'])
+                        hashes[hash]['filenames'].add(message['arquivo'])
                         hashes[hash]['messages'].append(message)
                         hashes[hash]['total_groups'] = len(
                             hashes[hash]['groups_shared'])
@@ -213,12 +213,12 @@ class SummarizationUtil:
                 for line in fdata:
                     message = json.loads(line.strip())
 
-                    text = message['content']
+                    text = message['texto']
 
                     if len(text) < min_size:
                         continue
                     isNew = True
-                    mID = message['message_id']
+                    mID = message['mensagem_id']
                     hashstring = mID
                     for ID in hashes.keys():
                         text2 = hashes[ID]['text']
@@ -230,7 +230,7 @@ class SummarizationUtil:
 
                     if isNew:
                         hashes[hashstring] = dict()
-                        hashes[hashstring]['first_share'] = message['data']
+                        hashes[hashstring]['first_share'] = message['criado_em']
                         hashes[hashstring]['total'] = 0
                         hashes[hashstring]['total_groups'] = 0
                         hashes[hashstring]['total_users'] = 0
@@ -242,13 +242,13 @@ class SummarizationUtil:
                         hashes[hashstring]['messages'] = list()
 
                     # ADD MESSAGE TO HASH
-                    if message['data'] < hashes[hashstring]['first_share']:
-                        hashes[hashstring]['first_share'] = message['data']
+                    if message['criado_em'] < hashes[hashstring]['first_share']:
+                        hashes[hashstring]['first_share'] = message['criado_em']
                     hashes[hashstring]['total'] += 1
                     hashes[hashstring]['groups_shared'].add(
-                        message['group_name'])
-                    hashes[hashstring]['users_shared'].add(message['sender'])
-                    hashes[hashstring]['messages_IDs'].append(message['message_id'])
+                        message['titulo'])
+                    hashes[hashstring]['users_shared'].add(message['enviado_por'])
+                    hashes[hashstring]['messages_IDs'].append(message['mensagem_id'])
                     hashes[hashstring]['messages'].append(message)
                     hashes[hashstring]['total_groups'] = len(
                         hashes[hashstring]['groups_shared'])
@@ -306,7 +306,7 @@ def main():
             util.generate_text_summarization(args.output)
 
     except Exception as e:
-        error_time = str(datetime.datetime.now())
+        error_time = str(datetime.now())
         error_msg = str(e).strip()
         with open('/data/log.txt', 'w') as ferror:
             print("%s >> Error:\t%s" % (error_time, error_msg))
