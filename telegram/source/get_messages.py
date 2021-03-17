@@ -15,6 +15,7 @@ import hashlib
 import imagehash
 import pytz
 import os
+import sys
 
 def md5(fname):
     hash_md5 = hashlib.md5()
@@ -368,7 +369,7 @@ class TelegramCollector():
             self.kafka.publish_kafka_message(self.producer, topic, 'raw', json_dump_object)
 
     async def _run_unread_collector(self):
-        async_client = TelegramClient('/data/collector_local', self.api_id, self.api_hash)
+        async_client = TelegramClient('telegram_api', self.api_id, self.api_hash)
         group_names = {}
 
         @async_client.on(events.NewMessage)
@@ -427,7 +428,7 @@ class TelegramCollector():
         print("Starting " + self.collection_mode + " collection.")
         try:
             if (self.collection_mode != 'unread'):
-                async with TelegramClient('/data/collector_local', self.api_id, self.api_hash) as client:
+                async with TelegramClient('telegram_api', self.api_id, self.api_hash) as client:
                 
                     print("Susccessfully connected to API")
                     async for dialog in client.iter_dialogs():

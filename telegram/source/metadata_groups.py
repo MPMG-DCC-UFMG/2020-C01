@@ -5,7 +5,7 @@ from kafka import KafkaConsumer
 from kafka import KafkaProducer
 
 import asyncio
-import os
+import os, sys
 import pathlib
 import json
 import argparse
@@ -125,7 +125,7 @@ class GroupMetadataCollector():
         pathlib.Path(new_folder).mkdir(parents=True, exist_ok=True)
         pathlib.Path(os.path.join(new_folder, "profile_pics")).mkdir(parents=True, exist_ok=True)
 
-        async with TelegramClient('/data/collector_local', self.api_id, self.api_hash) as client:
+        async with TelegramClient('/data/telegram_api', self.api_id, self.api_hash) as client:
             
             print("Login na API do Telegram realizado com sucesso. Coletando grupos")
             async for dialog in client.iter_dialogs():
