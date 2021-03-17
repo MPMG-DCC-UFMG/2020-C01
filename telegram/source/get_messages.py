@@ -158,7 +158,8 @@ class TelegramCollector():
         else:
             self.save_file             = True
             self.save_kafka            = False
-            
+        if self.write_mode == 'both':
+            self.save_file             = True
             
         #SAVING CREDENTIALS FOR FUTURE
         with open('/config/credentials.json' , "w") as json_file:
@@ -236,7 +237,7 @@ class TelegramCollector():
             item["grupo_id"] = message.to_id.channel_id
                 
         item["identificador"] = message.id
-        item["grupo_nome"] = dialog_name
+        item["titulo"] = dialog_name
         
         #print(message)
         #print(message.from_id)
@@ -249,28 +250,28 @@ class TelegramCollector():
         item["criado_em"]       = message.date.strftime("%Y-%m-%d %H:%M:%S")
         item["texto"]    = message.message 
         item["arquivo"]  = None
-        item["formato"]  = None
+        item["tipo"]  = None
         item["phash"]    = None
         item["checksum"] = None
         
         if message.media:
             if message.photo:
                 base_path = self.data_path+"image/"
-                item["formato"] = "image"
+                item["tipo"] = "image"
             elif message.audio or message.voice:
                 base_path = self.data_path+"audio/"
-                item["formato"] = "audio"
+                item["tipo"] = "audio"
             elif message.video or message.video_note:
                 base_path = self.data_path+"video/"
-                item["formato"] = "video"
+                item["tipo"] = "video"
             else:
                 base_path = self.data_path+"others/"
-                item["formato"] = "other"
+                item["tipo"] = "other"
 
-            if (item["formato"] == "image" and self.collect_images) or \
-                    (item["formato"] == "audio" and self.collect_audios) or \
-                    (item["formato"] == "video" and self.collect_videos) or \
-                    (item["formato"] == "other" and self.collect_others):
+            if (item["tipo"] == "image" and self.collect_images) or \
+                    (item["tipo"] == "audio" and self.collect_audios) or \
+                    (item["tipo"] == "video" and self.collect_videos) or \
+                    (item["tipo"] == "other" and self.collect_others):
                 path = os.path.join(base_path, message.date.strftime("%Y-%m-%d"))
                 pathlib.Path(path).mkdir(parents=True, exist_ok=True)
                 
@@ -284,12 +285,12 @@ class TelegramCollector():
                             item["arquivo"] = file_path.split("/")[-1]
 
                             if file_path != None and (
-                                    (item["formato"] == "image" and self.process_image_hashes) or 
-                                    (item["formato"] == "audio" and self.process_audio_hashes) or 
-                                    (item["formato"] == "video" and self.process_video_hashes) or 
-                                    (item["formato"] == "other" and self.process_other_hashes)):
+                                    (item["tipo"] == "image" and self.process_image_hashes) or 
+                                    (item["tipo"] == "audio" and self.process_audio_hashes) or 
+                                    (item["tipo"] == "video" and self.process_video_hashes) or 
+                                    (item["tipo"] == "other" and self.process_other_hashes)):
                                 item["checksum"] = md5(file_path)
-                                if item["formato"] == "image":
+                                if item["tipo"] == "image":
                                     try: 
                                         item["phash"] = str(imagehash.phash(Image.open(file_path)))
                                     except:
