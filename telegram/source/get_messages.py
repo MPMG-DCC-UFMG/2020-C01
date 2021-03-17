@@ -100,7 +100,7 @@ class TelegramCollector():
             print('Collection mode invalid <%s>!! Using <continuous> instead' %
                   (args_dict["collection_mode"]))
             args_dict["collection_mode"] = 'continuous'
-        if args_dict["write_mode"] not in ['both', 'day', 'group', 'kafka']:
+        if args_dict["write_mode"] not in ['both', 'file', 'kafka']:
             print('Save mode invalid <%s>!! Using <kafka> instead' % (
                 args_dict["write_mode"]))
             args_dict["write_mode"] = 'kafka'
@@ -138,17 +138,23 @@ class TelegramCollector():
         
 
 
-        self.save_file             = False
-        self.save_kafka            = True
-        self.kafka                 = KafkaManager()
-        if len(args_dict["bootstrap_servers"]) > 1:
-            self.bootstrap_servers     = args_dict["bootstrap_servers"]
-            self.kafka.update_servers(self.bootstrap_servers )
-        if len(args_dict["bootstrap_servers"]) == 1:
-            self.bootstrap_servers     = args_dict["bootstrap_servers"][0].split(',')
-            self.kafka.update_servers(self.bootstrap_servers )
-        self.producer              = self.kafka.connect_kafka_producer()
-
+                
+        if self.write_mode == 'kafka' or self.write_mode == 'both':
+            self.save_file             = False
+            self.save_kafka            = True
+            self.kafka                 = KafkaManager()
+            if len(args_dict["bootstrap_servers"]) > 1:
+                self.bootstrap_servers     = args_dict["bootstrap_servers"]
+                self.kafka.update_servers(self.bootstrap_servers )
+            if len(args_dict["bootstrap_servers"]) == 1:
+                self.bootstrap_servers     = args_dict["bootstrap_servers"][0].split(',')
+                self.kafka.update_servers(self.bootstrap_servers )
+            self.producer              = self.kafka.connect_kafka_producer()
+        else:
+            self.save_file             = True
+            self.save_kafka            = False
+            
+            
         #SAVING CREDENTIALS FOR FUTURE
         with open('/config/credentials.json' , "w") as json_file:
             api_dict = dict()
@@ -260,6 +266,9 @@ class TelegramCollector():
                     (item["formato"] == "audio" and self.collect_audios) or \
                     (item["formato"] == "video" and self.collect_videos) or \
                     (item["formato"] == "other" and self.collect_others):
+                path = os.path.join(base_path, message.date.strftime("%Y-%m-%d"))
+                pathlib.Path(path).mkdir(parents=True, exist_ok=True)
+                
                 path = os.path.join(base_path, message.date.strftime("%Y-%m-%d"), str(item["identificador"]))
                 try:
                     file_path = await message.download_media(path)
@@ -293,7 +302,7 @@ class TelegramCollector():
             self.kafka.publish_kafka_message(self.producer, topic, 'raw', json_dump_object)
             
         if self.save_file:
-            if self.write_mode == "group" or self.write_mode == "both":
+            if self.write_mode == "file" or self.write_mode == "both":
                 message_group_filename = os.path.join(group_path, "mensagens_grupo_" + str(item["grupo_id"]) + ".json" )
 
                 
@@ -302,7 +311,7 @@ class TelegramCollector():
                     json.dump(item, json_file)
                     print("", file=json_file)
 
-            if self.write_mode == "day" or self.write_mode == "both":
+            if self.write_mode == "file" or self.write_mode == "both":
                 message_day_filename = os.path.join(daily_path, "mensagens_" + message.date.strftime("%Y-%m-%d") + ".json")
 
                 # Save message on file for all messages of the day
@@ -484,7 +493,7 @@ async def main():
                         " \'period\').", default='2999-12-31')
 
     parser.add_argument("-w", "--write_mode", type=str,
-                        help="Modo de salvamento das mensagens no arquivos de saida(\'both\', \'day\', \'group\'). ", default='both')
+                        help="Modo de salvamento das mensagens no arquivos de saida(\'both\', \'file\', \'kafka\'). ", default='kafka')
 
     parser.add_argument("--collect_messages", type=bool,
                         help="Se mensagens de texto devem ser coletadas"

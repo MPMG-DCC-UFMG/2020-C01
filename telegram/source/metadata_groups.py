@@ -66,6 +66,15 @@ class GroupMetadataCollector():
                 sys.exit(1)
             
             
+            
+        if args_dict["write_mode"] not in ['both', 'file', 'kafka']:
+            print('Save mode invalid <%s>!! Using <kafka> instead' % (
+                args_dict["write_mode"]))
+            args_dict["write_mode"] = 'kafka'
+        
+        
+        self.write_mode              = args_dict["write_mode"]    
+            
         self.group_blacklist       = args_dict["group_blacklist"]
         self.api_id                = args_dict["api_id"]
         self.api_hash              = args_dict["api_hash"]
@@ -75,16 +84,22 @@ class GroupMetadataCollector():
         self.bootstrap_servers     = args_dict["bootstrap_servers"]
 
 
-        self.save_file             = False
-        self.save_kafka            = True
-        self.kafka                 = KafkaManager()
-        if len(args_dict["bootstrap_servers"]) > 1:
-            self.bootstrap_servers     = args_dict["bootstrap_servers"]
-            self.kafka.update_servers(self.bootstrap_servers )
-        if len(args_dict["bootstrap_servers"]) == 1:
-            self.bootstrap_servers     = args_dict["bootstrap_servers"][0].split(',')
-            self.kafka.update_servers(self.bootstrap_servers )
-        self.producer              = self.kafka.connect_kafka_producer()
+       
+                
+        if self.write_mode == 'kafka' or self.write_mode == 'both':
+            self.save_file             = False
+            self.save_kafka            = True
+            self.kafka                 = KafkaManager()
+            if len(args_dict["bootstrap_servers"]) > 1:
+                self.bootstrap_servers     = args_dict["bootstrap_servers"]
+                self.kafka.update_servers(self.bootstrap_servers )
+            if len(args_dict["bootstrap_servers"]) == 1:
+                self.bootstrap_servers     = args_dict["bootstrap_servers"][0].split(',')
+                self.kafka.update_servers(self.bootstrap_servers )
+            self.producer              = self.kafka.connect_kafka_producer()
+        else:
+            self.save_file             = True
+            self.save_kafka            = False
         
         #SAVING CREDENTIALS FOR FUTURE
         with open('/config/credentials.json' , "w") as json_file:
@@ -205,6 +220,9 @@ async def main():
     parser.add_argument("--profiles", type=str2bool, nargs='?',
                         const=True, default=True,
                         help="Flag para listar quem sÃo os usuários ")
+                        
+    parser.add_argument("-w", "--write_mode", type=str,
+                        help="Modo de salvamento das mensagens no arquivos de saida(\'both\', \'file\', \'kafka\'). ", default='kafka')
 
     parser.add_argument("--api_id", type=str,
                         help="ID da API de Coleta gerado em my.telegram.org (Dado sensível)", default='')
