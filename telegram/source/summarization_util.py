@@ -222,7 +222,7 @@ class SummarizationUtil:
                     if len(text) < min_size:
                         continue
                     isNew = True
-                    mID = message['mensagem_id']
+                    mID = message['identificador']
                     hashstring = mID
                     for ID in hashes.keys():
                         text2 = hashes[ID]['text']
@@ -252,7 +252,7 @@ class SummarizationUtil:
                     hashes[hashstring]['groups_shared'].add(
                         message['titulo'])
                     hashes[hashstring]['users_shared'].add(message['enviado_por'])
-                    hashes[hashstring]['messages_IDs'].append(message['mensagem_id'])
+                    hashes[hashstring]['messages_IDs'].append(message['identificador'])
                     hashes[hashstring]['messages'].append(message)
                     hashes[hashstring]['total_groups'] = len(
                         hashes[hashstring]['groups_shared'])
