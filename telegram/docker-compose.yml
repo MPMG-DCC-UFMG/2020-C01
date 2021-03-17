@@ -4,8 +4,8 @@ services:
   collector:
      build: .
      volumes: 
-       - "./data:/data"
-       - "./config:/config"
+       - "/home/philipemelo/MPMG_git/data_telegram:/data"
+       - "/home/philipemelo/MPMG_git/data_telegram/config:/config"
      working_dir: /app
 
 volumes:
