@@ -118,7 +118,7 @@ class TelegramCollector():
                     keys_args = json.load(fin)
                     args_dict["api_id"]       = keys_args["api_id"]
                     args_dict["api_hash"]     = keys_args["api_hash"]
-                    api_dict["session_name"]  = args_dict["session_name"]
+                    args_dict["session_name"]  = keys_args["session_name"]
             else:
                 print('No credentials provided: api_id, api_hash\nUnable to connect to Telegram API...')
                 sys.exit(1)
@@ -191,7 +191,7 @@ class TelegramCollector():
             if check_user_w and (sender not in self.user_whitelist):
                 return False
                 
-        if check_group_b and (sender in self.user_blacklist or sender in self.user_blacklist):
+        if check_user_b and (sender in self.user_blacklist or sender in self.user_blacklist):
             print('User', sender, 'in user blacklist!!! Next message')
             return False
                     

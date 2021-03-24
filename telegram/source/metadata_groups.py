@@ -139,7 +139,7 @@ class GroupMetadataCollector():
         if isfile( join(self.data_path, session_name) ):
             copyfile(join(self.data_path, session_name), session_name)
             
-        async with TelegramClient('telegram_api', self.api_id, self.api_hash) as client:
+        async with TelegramClient(session_name, self.api_id, self.api_hash) as client:
             
             print("Login na API do Telegram realizado com sucesso. Coletando grupos")
             if isfile(session_name):
