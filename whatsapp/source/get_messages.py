@@ -112,7 +112,7 @@ class WhatsappCollector():
             print('Collection mode invalid <%s>!! Using <continuous> instead' %
                   (args_dict["collection_mode"]))
             args_dict["collection_mode"] = 'continuous'
-        if args_dict["write_mode"] not in ['both', 'day', 'group', 'kafka']:
+        if args_dict["write_mode"] not in ['both', 'day', 'file', 'group', 'kafka']:
             print('Save mode invalid <%s>!! Using <kafka> instead' % (
                 args_dict["write_mode"]))
             args_dict["write_mode"] = 'kafka'
@@ -376,7 +376,7 @@ class WhatsappCollector():
             if check_user_w and (sender not in self.user_whitelist):
                 return False
                 
-        if check_group_b and (id in self.user_blacklist or sender in self.user_blacklist):
+        if check_user_b and (id in self.user_blacklist or sender in self.user_blacklist):
             print('User', sender, 'in user blacklist!!! Next message')
             return False
                     

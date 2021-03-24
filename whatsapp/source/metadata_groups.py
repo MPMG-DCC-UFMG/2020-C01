@@ -99,7 +99,7 @@ class GroupMetadataCollector():
         else:
             self.save_file             = True
             self.save_kafka            = False
-         if self.write_mode == 'both':
+        if self.write_mode == 'both':
             self.save_file             = True
             self.save_kafka            = True
          
