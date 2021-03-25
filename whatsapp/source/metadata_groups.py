@@ -77,10 +77,12 @@ class GroupMetadataCollector():
             json_args = json.loads(args.json_string)
             args_dict.update(json_args)
 
-        self.data_path           = args_dict["datalake"]
+        self.data_path           = '/data/'
+        self.datalake            = args_dict["datalake"]
         self.write_mode          = args_dict["write_mode"]
         self.group_blacklist     = args_dict["group_blacklist"]
         self.bootstrap_servers   = args_dict["bootstrap_servers"]
+        self.profiles            = args_dict["profiles"]
 
 
         if self.write_mode == 'kafka' or self.write_mode == 'both':
@@ -97,7 +99,10 @@ class GroupMetadataCollector():
         else:
             self.save_file             = True
             self.save_kafka            = False
-        
+        if self.write_mode == 'both':
+            self.save_file             = True
+            self.save_kafka            = True
+         
 
     def _process_string(self, string):
         """
@@ -148,7 +153,7 @@ class GroupMetadataCollector():
             driver.save_firefox_profile(remove_old=False)
             print("Bot started")
 
-            pathlib.Path("/data/grupos").mkdir(parents=True, exist_ok=True)
+            pathlib.Path(join(self.data_path, 'grupos/')).mkdir(parents=True, exist_ok=True)
 
             print('>>>>>>>>>>> Loading chat ids')
             chats = driver.get_all_chats()
@@ -179,15 +184,16 @@ class GroupMetadataCollector():
                 kind = chat._js_obj["kind"]
 
                 participants = list()
-                for member in driver.group_get_participants(_id):
-                    user = dict()
-                    user['name'] = member.verified_name
-                    user['short_name'] = member.short_name
-                    user['nome_formatado'] = member.formatted_name
-                    user['number'] = member.id
-                    user['isBusiness'] = member.is_business
-                    user['profile_pic'] = member.profile_pic
-                    participants.append(user)
+                if self.profiles:
+                    for member in driver.group_get_participants(_id):
+                        user = dict()
+                        user['name'] = member.verified_name
+                        user['short_name'] = member.short_name
+                        user['nome_formatado'] = member.formatted_name
+                        user['number'] = member.id
+                        user['isBusiness'] = member.is_business
+                        user['profile_pic'] = member.profile_pic
+                        participants.append(user)
 
                 group['group_id'] = _id
                 group['creator'] = creator
@@ -198,7 +204,7 @@ class GroupMetadataCollector():
                 group['title'] = name
                 group['members'] = participants
 
-                path = '/data/grupos/'
+                path = join(self.data_path, 'grupos/')
                 filename = '%sgrupos_%s.json' % (path, _id.split('@')[0].strip())
                 print(group)
                 
@@ -222,7 +228,19 @@ class GroupMetadataCollector():
             driver.close()
             raise Exception(e)
 
+               
+                
+def str2bool(v):
+    if isinstance(v, bool):
+       return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
 
+        
 def main():
     parser = argparse.ArgumentParser()
 
@@ -241,13 +259,18 @@ def main():
                         " execução. Individualmente, as opções presentes no "
                         "arquivo sobescreveram os argumentos de linha de "
                         "comando, caso eles sejam fornecidos.")
-    
+                            
+    parser.add_argument("--profiles", type=str2bool, nargs='?',
+                        const=True, default=True,
+                        help="Flag para listar quem sÃo os usuários ")
+                        
+                        
     parser.add_argument("-w", "--write_mode", type=str,
                         help="Modo de salvamento das mensagens no arquivos de saída(\'file\', \'kafka\'). ", default='kafka')
-                        
-    parser.add_argument("-d", "--datalake", type=str,
-                        help="Local para salvar arquivos de midia",
-                        default='/data/')
+
+    parser.add_argument("--datalake", type=str,
+                        help="Local onde sao salvas as midias",
+                        default='/datalake/ufmg/whatsapp/')
 
     parser.add_argument("--bootstrap_servers", nargs="+",
                         help="Lista de endereço para conexão dos servers Kafka"
@@ -270,3 +293,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

@@ -110,13 +110,15 @@ class TelegramCollector():
                 args_dict["write_mode"]))
             args_dict["write_mode"] = 'kafka'
 
+        self.session_name          = args_dict["session_name"]
         if (args_dict["api_id"] == '' or args_dict["api_id"] == None) or (args_dict["api_hash"] == '' or args_dict["api_hash"] == None):
-            keys_file = '/config/credentials.json' 
+            keys_file = '/config/credentials_%s.json'%(self.session_name) 
             if os.path.isfile(keys_file):
                 with open(keys_file, 'r') as fin:
                     keys_args = json.load(fin)
-                    args_dict["api_id"]   = keys_args["api_id"]
-                    args_dict["api_hash"] = keys_args["api_hash"]
+                    args_dict["api_id"]       = keys_args["api_id"]
+                    args_dict["api_hash"]     = keys_args["api_hash"]
+                    args_dict["session_name"]  = keys_args["session_name"]
             else:
                 print('No credentials provided: api_id, api_hash\nUnable to connect to Telegram API...')
                 sys.exit(1)
@@ -127,6 +129,8 @@ class TelegramCollector():
         self.write_mode            = args_dict["write_mode"]
         self.group_blacklist       = args_dict["group_blacklist"]
         self.user_blacklist        = args_dict["user_blacklist"]
+        self.group_whitelist       = args_dict["group_whitelist"]
+        self.user_whitelist        = args_dict["user_whitelist"]
         self.collect_messages      = args_dict["collect_messages"]
         self.collect_audios        = args_dict["collect_audios"]
         self.collect_videos        = args_dict["collect_videos"]
@@ -139,11 +143,12 @@ class TelegramCollector():
         self.process_other_hashes  = args_dict["process_other_hashes"]
         self.api_id                = args_dict["api_id"]
         self.api_hash              = args_dict["api_hash"]
-        self.data_path              = args_dict["datalake"]
+        self.datalake              = args_dict["datalake"]
+        self.session_name          = args_dict["session_name"]
         
 
 
-                
+        self.data_path              = '/data/'        
         if self.write_mode == 'kafka' or self.write_mode == 'both':
             self.save_file             = False
             self.save_kafka            = True
@@ -162,12 +167,37 @@ class TelegramCollector():
             self.save_file             = True
             
         #SAVING CREDENTIALS FOR FUTURE
-        with open('/config/credentials.json' , "w") as json_file:
+        with open('/config/credentials_%s.json'%(args_dict["session_name"])  , "w") as json_file:
             api_dict = dict()
-            api_dict["api_id"]    = args_dict["api_id"]
-            api_dict["api_hash"]  = args_dict["api_hash"]
+            api_dict["api_id"]        = args_dict["api_id"]
+            api_dict["api_hash"]      = args_dict["api_hash"]
+            api_dict["session_name"]  = args_dict["session_name"]
             json.dump(api_dict, json_file)
-           
+        
+
+    def check_user(self, message):
+        check_user_w = False
+        check_user_b = False
+        if len(self.user_whitelist) > 0: check_user_w = True
+        if len(self.user_blacklist) > 0: check_user_b = True
+        
+        sender = ''
+        try:
+            sender = message.from_id.user_id
+        except:
+            sender = str(message.to_id.channel_id)
+
+        if check_user_w and (sender not in self.user_whitelist):
+            if check_user_w and (sender not in self.user_whitelist):
+                return False
+                
+        if check_user_b and (sender in self.user_blacklist or sender in self.user_blacklist):
+            print('User', sender, 'in user blacklist!!! Next message')
+            return False
+                    
+        
+        return True
+        
     def _get_load_messages(self, path='/data/mid_file.txt'):
         """
         Carrega e retorna um conjunto de ids das mensagens ja coletadas.
@@ -237,6 +267,7 @@ class TelegramCollector():
             item["grupo_id"] = message.to_id.channel_id
                 
         item["identificador"] = message.id
+        item["mensagem_id"] = message.id
         item["titulo"] = dialog_name
         
         #print(message)
@@ -283,6 +314,7 @@ class TelegramCollector():
                         if os.path.isfile(file_path): 
                             
                             item["arquivo"] = file_path.split("/")[-1]
+                            item["datalake"] = join( self.datalake, file_path.split("/")[-1])
 
                             if file_path != None and (
                                     (item["tipo"] == "image" and self.process_image_hashes) or 
@@ -375,13 +407,14 @@ class TelegramCollector():
 
     async def _run_unread_collector(self):
         
-        if isfile('/data/telegram_api.session'):
-            copyfile('/data/telegram_api.session', 'telegram_api.session')
+        session_name =  '%s.session'%(self.session_name)
+        if isfile( join(self.data_path, session_name) ):
+            copyfile(join(self.data_path, session_name), session_name)
         
-        async_client = TelegramClient('telegram_api', self.api_id, self.api_hash)
+        async_client = TelegramClient(self.session_name, self.api_id, self.api_hash)
         
-        if isfile('telegram_api.session'):
-            copyfile('telegram_api.session', '/data/telegram_api.session')
+        if isfile(session_name):
+            copyfile(session_name, join(self.data_path, session_name))
             
         group_names = {}
 
@@ -438,17 +471,27 @@ class TelegramCollector():
 
         # Load previous saved messages
         previous_ids = self._get_load_messages()
-        if isfile('/data/telegram_api.session'):
-            copyfile('/data/telegram_api.session', 'telegram_api.session')
+
+        session_name =  '%s.session'%(self.session_name)
+        if isfile( join(self.data_path, session_name) ):
+            copyfile(join(self.data_path, session_name), session_name)
+        
+        
+        check_group_w = False
+        check_group_b = False
+        if len(self.group_whitelist) > 0: check_group_w = True
+        if len(self.group_blacklist) > 0: check_group_b = True
+        
         
         print("Starting " + self.collection_mode + " collection.")
         try:
             if (self.collection_mode != 'unread'):
-                async with TelegramClient('telegram_api', self.api_id, self.api_hash) as client:
+                async with TelegramClient(self.session_name, self.api_id, self.api_hash) as client:
                 
                     print("Susccessfully connected to API")
-                    if isfile('telegram_api.session'):
-                        copyfile('telegram_api.session', '/data/telegram_api.session')
+                    if isfile(session_name):
+                        copyfile(session_name, join(self.data_path, session_name))
+                        
                     
                     async for dialog in client.iter_dialogs():
                         group_id = dialog.entity.id
@@ -456,23 +499,30 @@ class TelegramCollector():
                             group_name = dialog.entity.title
                         except:
                             continue
-                            
-                        if ((dialog.is_group or dialog.is_channel) and dialog.entity.title not in self.group_blacklist and
-                            str(abs(group_id)) not in self.group_blacklist):
+                         
+                        if check_group_w and (group_id not in self.group_whitelist):
+                            if check_group_w and (group_name not in self.group_whitelist):
+                                continue
+                        if check_group_b and (group_id in self.group_blacklist or group_name in self.group_blacklist):
+                            print('Group',group_id, str(group_name), 'in blacklist and will not be collected! Next group')
+                            continue
+                    
+                    
+                        if (dialog.is_group or dialog.is_channel):
                             
                             if   dialog.is_group:   inst = 'group'
-                            if dialog.is_channel: inst = 'channel'
+                            if dialog.is_channel:   inst = 'channel'
                             print("Collecting mssages for " + str(inst) + ":" + str(group_id) + " - " + str(group_name))
                             async for message in client.iter_messages(dialog):
-                            
+                                if not self.check_user(message): continue
+                                
                                 new_id = str(group_id)+'_'+str(message.id )
                                 message.id = new_id
                                 if (message.date < start_date):
                                     break
                                 if (message.date > end_date and self.collection_mode == 'period'):
                                     continue
-                                
-                                if (message.id in previous_ids or str(message.from_id) in self.user_blacklist):
+                                if (message.id in previous_ids):
                                     continue
 
                                 if (not message.action) and self.collect_messages:
@@ -494,7 +544,15 @@ class TelegramCollector():
             print("Starting unread message collection.")
             await self._run_unread_collector()
 
-
+def str2bool(v):
+    if isinstance(v, bool):
+       return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
 
 async def main():
     parser = argparse.ArgumentParser()
@@ -502,7 +560,7 @@ async def main():
     parser.add_argument("-m", "--collection_mode", type=str,
                         help="Modo de colecao a ser utilizado (\'period\'"
                         " ou \'unread\' ou \'continuous\').",
-                        default='continuous')
+                        default='period')
 
     parser.add_argument("-s", "--start_date", type=str,
                         help="Data de inicio do periodo de coleta (Modo"
@@ -515,43 +573,43 @@ async def main():
     parser.add_argument("-w", "--write_mode", type=str,
                         help="Modo de salvamento das mensagens no arquivos de saida(\'both\', \'file\', \'kafka\'). ", default='kafka')
 
-    parser.add_argument("--collect_messages", type=bool,
+    parser.add_argument("--collect_messages", type=str2bool,
                         help="Se mensagens de texto devem ser coletadas"
                         " durante a execucao.", default=True)
 
-    parser.add_argument("--collect_audios", type=bool,
+    parser.add_argument("--collect_audios", type=str2bool,
                         help="Se audios devem ser coletadas durante a"
                         " execucao.", default=True)
 
-    parser.add_argument("--collect_videos", type=bool,
+    parser.add_argument("--collect_videos", type=str2bool,
                         help="Se videos devem ser coletadas durante a"
                         " execucao.", default=True)
 
-    parser.add_argument("--collect_images", type=bool,
+    parser.add_argument("--collect_images", type=str2bool,
                         help="Se imagens devem ser coletadas durante a"
                         " execucao.", default=True)
 
-    parser.add_argument("--collect_others", type=bool,
+    parser.add_argument("--collect_others", type=str2bool,
                         help="Se outros tipos de midia (e.g. documentos, stickers) devem "
                         "ser coletadas durante a execucao.", default=True)
 
-    parser.add_argument("--collect_notifications", type=bool,
+    parser.add_argument("--collect_notifications", type=str2bool,
                         help="Se as notificacoes devem ser coletadas durante a"
                         " execucao.", default=True)
 
-    parser.add_argument("--process_audio_hashes", type=bool,
+    parser.add_argument("--process_audio_hashes", type=str2bool,
                         help="Se hashes de audios devem ser calculados durante"
                         " a execucao.", default=True)
 
-    parser.add_argument("--process_image_hashes", type=bool,
+    parser.add_argument("--process_image_hashes", type=str2bool,
                         help="Se hashes de imagens devem ser calculados"
                         " durante a execucao.", default=True)
 
-    parser.add_argument("--process_video_hashes", type=bool,
+    parser.add_argument("--process_video_hashes", type=str2bool,
                         help="Se hashes de videos devem ser calculados durante"
                         " a execucao.", default=True)
 
-    parser.add_argument("--process_other_hashes", type=bool,
+    parser.add_argument("--process_other_hashes", type=str2bool,
                         help="Se hashes de outros tipos de midiaa devem ser calculados durante"
                         " a execucao.", default=False)
 
@@ -563,6 +621,14 @@ async def main():
                         help="Lista de usuarios que devem ser excluidos da"
                         " coleta", default=[])
 
+    parser.add_argument("--group_whitelist", nargs="+",
+                        help="Lista de ids de grupos que devem ser incluidos da"
+                        " coleta", default=[])
+
+    parser.add_argument("--user_whitelist", nargs="+",
+                        help="Lista de usuarios que devem ser incluidos da"
+                        " coleta", default=[])
+
     parser.add_argument("--api_id", type=str,
                         help="ID da API de Coleta gerado em my.telegram.org (Dado sensivel)", default='')
 
@@ -570,8 +636,12 @@ async def main():
                         help="Hash da API de Coleta gerado em my.telegram.org (Dado sensivel)", default='')
 
     parser.add_argument("--datalake", type=str,
-                        help="Local para salvar as midias",
-                        default='/data/')
+                        help="Local onde sao salvas as midias",
+                        default='/datalake/ufmg/telegram/')
+                        
+    parser.add_argument("--session_name", type=str,
+                        help="Nome de secao para autenticacao da API do Telegram. Gera um arquivo <seciton_name>.session autorizando a conta a usar  a API",
+                        default='telegram_api')
                         
     parser.add_argument("--bootstrap_servers", nargs="+",
                         help="Lista de endereco para conexao dos servers Kafka"

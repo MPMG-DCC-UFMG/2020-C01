@@ -112,7 +112,7 @@ class WhatsappCollector():
             print('Collection mode invalid <%s>!! Using <continuous> instead' %
                   (args_dict["collection_mode"]))
             args_dict["collection_mode"] = 'continuous'
-        if args_dict["write_mode"] not in ['both', 'day', 'group', 'kafka']:
+        if args_dict["write_mode"] not in ['both', 'day', 'file', 'group', 'kafka']:
             print('Save mode invalid <%s>!! Using <kafka> instead' % (
                 args_dict["write_mode"]))
             args_dict["write_mode"] = 'kafka'
@@ -122,9 +122,11 @@ class WhatsappCollector():
         self.collection_mode       = args_dict["collection_mode"]
         self.start_date            = args_dict["start_date"]
         self.end_date              = args_dict["end_date"]
-        self.write_mode              = args_dict["write_mode"]
+        self.write_mode            = args_dict["write_mode"]
         self.group_blacklist       = args_dict["group_blacklist"]
         self.user_blacklist        = args_dict["user_blacklist"]
+        self.group_whitelist       = args_dict["group_whitelist"]
+        self.user_whitelist        = args_dict["user_whitelist"]
         self.collect_messages      = args_dict["collect_messages"]
         self.collect_audios        = args_dict["collect_audios"]
         self.collect_videos        = args_dict["collect_videos"]
@@ -134,7 +136,8 @@ class WhatsappCollector():
         self.process_image_hashes  = args_dict["process_image_hashes"]
         self.process_video_hashes  = args_dict["process_video_hashes"]
         self.profile               = args_dict["profile"]
-        self.data_path             = args_dict["datalake"]
+        self.data_path             = '/data/'
+        self.datalake              = args_dict["datalake"]
         self.bootstrap_servers     = args_dict["bootstrap_servers"]
 
         
@@ -152,6 +155,11 @@ class WhatsappCollector():
         else:
             self.save_file             = True
             self.save_kafka            = False
+        
+        if self.write_mode == 'both':
+            self.save_file             = True
+            self.save_kafka            = True
+         
         
     def _process_string(self, string):
         """
@@ -349,7 +357,32 @@ class WhatsappCollector():
             return False
         else:
             return True
+    
+    
+    def check_user(self, message):
+        check_user_w = False
+        check_user_b = False
+        if len(self.user_whitelist) > 0: check_user_w = True
+        if len(self.user_blacklist) > 0: check_user_b = True
+        
+        sender = ''
+        id = message.sender.id
+        sender = message.sender.id
+        sender = sender.replace(' ', '').strip()
+        sender = sender.split('@')[0]
+        sender = ('+'+sender)
 
+        if check_user_w and (id not in self.user_whitelist):
+            if check_user_w and (sender not in self.user_whitelist):
+                return False
+                
+        if check_user_b and (id in self.user_blacklist or sender in self.user_blacklist):
+            print('User', sender, 'in user blacklist!!! Next message')
+            return False
+                    
+        
+        return True
+        
     def _save_notification_(self, message, gid, path='/data/notificacoes/'):
         """
         Escreve em formato json a notificação contida na mensagem no arquivo
@@ -421,7 +454,7 @@ class WhatsappCollector():
             notification['received_by'] = from_user
 
             n_date = notification['criado_em'].split(' ')[0]
-            all_notification_filename = '/data/all_notificacoes/all_notificacoes_%s.json' % \
+            all_notification_filename = self.data_path+'all_notificacoes/all_notificacoes_%s.json' % \
                 (n_date)
 
             if message._js_obj['recipients']:
@@ -586,6 +619,7 @@ class WhatsappCollector():
         item['criado_em'] = smart_str(date)
         item['tipo'] = mediatype
         item['arquivo'] = smart_str(filename)
+        item['datalake'] = join(self.data_path, smart_str(filename))
         item['texto'] = smart_str(content)
         if (mediatype == 'video' or mediatype == 'image'
                 or mediatype == 'audio'):
@@ -608,13 +642,13 @@ class WhatsappCollector():
         
         if self.save_file:
             # Save message on group ID file
-            if self.write_mode == 'group' or self.write_mode == 'both':
+            if self.write_mode == 'group' or self.write_mode == 'file' or self.write_mode == 'both':
                 message_group_filename = '%smensagens_grupo_%s.json' % (msg_id_path, gid)
                 with open(message_group_filename, 'a') as json_file:
                     json.dump(item, json_file)
                     print('', file=json_file)
 
-            if self.write_mode == 'day' or self.write_mode == 'both':
+            if self.write_mode == 'day' or self.write_mode == 'file' or self.write_mode == 'both':
                 message_day_filename = file_name
 
                 # Save message on file for all messages of the day
@@ -669,7 +703,12 @@ class WhatsappCollector():
         if (self.collection_mode == 'period') and (min_date < '2020-01-01'):
             raise Exception("Can't start collection without a start and end"
                             " date.")
-
+        
+        check_group_w = False
+        check_group_b = False
+        if len(self.group_whitelist) > 0: check_group_w = True
+        if len(self.group_blacklist) > 0: check_group_b = True
+        
         while looping:
 
             if self.collection_mode == 'continuous':
@@ -710,6 +749,13 @@ class WhatsappCollector():
                     gid = gid.split('@')[0]
                     s_name = self._process_string(chat.name)
 
+                    if check_group_w and (gid not in self.group_whitelist):
+                        if check_group_w and (s_name not in self.group_whitelist):
+                            continue
+                    if check_group_b and (gid in self.group_blacklist or s_name in self.group_blacklist):
+                        print('Group',gid, str(s_name), 'in blacklist and will not be collected! Next group')
+                        continue
+                    
                     # Skip group if it is on blacklist (can be name or groupID)
                     if (s_name in self.group_blacklist or
                             gid in self.group_blacklist):
@@ -794,14 +840,9 @@ class WhatsappCollector():
                                 continue
                             if not j:
                                 continue
-
-                        sender = j.sender.id
-                        sender = sender.replace(' ', '').strip()
-                        sender = sender.split('@')[0]
-                        if (sender in self.user_blacklist or
-                                '+' + sender in self.user_blacklist):
-                            continue
-
+                        
+                        if not self.check_user(j): continue
+                        
                         try:
                             date = self._get_date_from_message(j)
                         except Exception:
@@ -849,6 +890,17 @@ class WhatsappCollector():
                 time.sleep(3600)
 
 
+def str2bool(v):
+    if isinstance(v, bool):
+       return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
+        
 def main():
     parser = argparse.ArgumentParser()
 
@@ -872,57 +924,66 @@ def main():
     parser.add_argument("-w", "--write_mode", type=str,
                         help="Modo de salvamento das mensagens no arquivos de saída(\'both\', \'day\', \'group\', \'kafka\'). ", default='kafka')
 
-    parser.add_argument("--collect_messages", type=bool,
+    parser.add_argument("--collect_messages", type=str2bool,
                         help="Se mensagens de texto devem ser coletadas"
                         " durante a execução.", default=True)
 
-    parser.add_argument("--collect_audios", type=bool,
+    parser.add_argument("--collect_audios", type=str2bool,
                         help="Se audios devem ser coletadas durante a"
                         " execução.", default=True)
 
-    parser.add_argument("--collect_videos", type=bool,
+    parser.add_argument("--collect_videos", type=str2bool,
                         help="Se videos devem ser coletadas durante a"
                         " execução.", default=True)
 
-    parser.add_argument("--collect_images", type=bool,
+    parser.add_argument("--collect_images", type=str2bool,
                         help="Se imagens devem ser coletadas durante a"
                         " execução.", default=True)
 
-    parser.add_argument("--collect_notifications", type=bool,
+    parser.add_argument("--collect_notifications", type=str2bool,
                         help="Se as notificações devem ser coletadas durante a"
                         " execução.", default=True)
 
-    parser.add_argument("--process_audio_hashes", type=bool,
+    parser.add_argument("--process_audio_hashes", type=str2bool,
                         help="Se hashes de audios devem ser calculados durante"
-                        " a execução.", default=False)
+                        " a execução.", default=True)
 
-    parser.add_argument("--process_image_hashes", type=bool,
+    parser.add_argument("--process_image_hashes", type=str2bool,
                         help="Se hashes de imagens devem ser calculados"
-                        " durante a execução.", default=False)
+                        " durante a execução.", default=True)
 
-    parser.add_argument("--process_video_hashes", type=bool,
+    parser.add_argument("--process_video_hashes", type=str2bool,
                         help="Se hashes de videos devem ser calculados durante"
-                        " a execução.", default=False)
+                        " a execução.", default=True)
 
     parser.add_argument("--group_blacklist", nargs="+",
                         help="Lista de ids de grupos que devem ser excluídos da"
                         " coleta", default=[])
-
-
+                        
     parser.add_argument("--user_blacklist", nargs="+",
                         help="Lista de ids de grupos que devem ser excluídos da"
                         " coleta", default=[])
 
-    parser.add_argument("-d", "--datalake", type=str,
-                        help="Local para salvar arquivos de midia",
-                        default='/data/')
+    parser.add_argument("--group_whitelist", nargs="+",
+                        help="Lista de ids de grupos que devem ser incluidos da"
+                        " coleta", default=[])
+
+    parser.add_argument("--user_whitelist", nargs="+",
+                        help="Lista de usuarios que devem ser incluidos da"
+                        " coleta", default=[])
+
+    parser.add_argument("--datalake", type=str,
+                        help="Local onde sao salvas as midias",
+                        default='/datalake/ufmg/whatsapp/')
+                        
+    parser.add_argument("--session_name", type=str,
+                        help="Nome de secao para autenticacao da API do Telegram. Gera um arquivo <seciton_name>.session autorizando a conta a usar  a API",
+                        default='telegram_api')
 
     parser.add_argument("--bootstrap_servers", nargs="+",
                         help="Lista de endereço para conexão dos servers Kafka"
                         " (Brokers)", default=[])
 
-
-                        
     parser.add_argument("-j", "--json", type=str,
                         help="Caminho para um arquivo json de configuração de "
                         "execução. Individualmente, as opções presentes no "
@@ -950,3 +1011,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

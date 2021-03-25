@@ -57,14 +57,16 @@ class GroupMetadataCollector():
         elif args.json_string:
             json_args = json.loads(args.json_string)
             args_dict.update(json_args)
-    
+        
+        self.session_name          = args_dict["session_name"]
         if (args_dict["api_id"] == '' or args_dict["api_id"] == None) or (args_dict["api_hash"] == '' or args_dict["api_hash"] == None):
-            keys_file = '/config/credentials.json' 
+            keys_file = '/config/credentials_%s.json'%(self.session_name) 
             if os.path.isfile(keys_file):
                 with open(keys_file, 'r') as fin:
                     keys_args = json.load(fin)
                     args_dict["api_id"]   = keys_args["api_id"]
                     args_dict["api_hash"] = keys_args["api_hash"]
+                    args_dict["session_name"] = keys_args["session_name"]
             else:
                 print('No credentials provided: api_id, api_hash\nUnable to connect to Telegram API...')
                 sys.exit(1)
@@ -84,9 +86,10 @@ class GroupMetadataCollector():
         self.api_hash              = args_dict["api_hash"]
         self.profile_pic           = args_dict["profile_pic"]
         self.profiles              = args_dict["profiles"]
-        self.data_path             = args_dict["datalake"]
+        self.data_path             = '/data/'
+        self.datalake              = args_dict["datalake"]
         self.bootstrap_servers     = args_dict["bootstrap_servers"]
-
+        self.session_name          = args_dict["session_name"]
 
        
                 
@@ -106,10 +109,11 @@ class GroupMetadataCollector():
             self.save_kafka            = False
         
         #SAVING CREDENTIALS FOR FUTURE
-        with open('/config/credentials.json' , "w") as json_file:
+        with open('/config/credentials_%s.json'%(args_dict["session_name"])  , "w") as json_file:
             api_dict = dict()
-            api_dict["api_id"]    = args_dict["api_id"]
-            api_dict["api_hash"]  = args_dict["api_hash"]
+            api_dict["api_id"]        = args_dict["api_id"]
+            api_dict["api_hash"]      = args_dict["api_hash"]
+            api_dict["session_name"]  = args_dict["session_name"]
             json.dump(api_dict, json_file)
         
         
@@ -130,14 +134,16 @@ class GroupMetadataCollector():
         pathlib.Path(os.path.join(new_folder, "profile_pics")).mkdir(parents=True, exist_ok=True)
         
         
-        if isfile('/data/telegram_api.session'):
-            copyfile('/data/telegram_api.session', 'telegram_api.session')
+        
+        session_name =  '%s.session'%(self.session_name)
+        if isfile( join(self.data_path, session_name) ):
+            copyfile(join(self.data_path, session_name), session_name)
             
-        async with TelegramClient('telegram_api', self.api_id, self.api_hash) as client:
+        async with TelegramClient(session_name, self.api_id, self.api_hash) as client:
             
             print("Login na API do Telegram realizado com sucesso. Coletando grupos")
-            if isfile('telegram_api.session'):
-                copyfile('telegram_api.session', '/data/telegram_api.session')
+            if isfile(session_name):
+                copyfile(session_name, join(self.data_path, session_name))
                 
             async for dialog in client.iter_dialogs():
                 WAIT_TIME = random.randint(10, 25)
@@ -255,7 +261,11 @@ async def main():
 
     parser.add_argument("--datalake", type=str,
                         help="Local para salvar as midias",
-                        default='/data/')
+                        default='/datalake/ufmg/telegram/')
+                        
+    parser.add_argument("--session_name", type=str,
+                        help="Nome de secao para autenticacao da API do Telegram. Gera um arquivo <seciton_name>.session autorizando a conta a usar  a API",
+                        default='telegram_api')
                         
     parser.add_argument("--bootstrap_servers", nargs="+",
                         help="Lista de endereço para conexão dos servers Kafka"
@@ -273,4 +283,5 @@ async def main():
 
 if __name__ == '__main__':
     asyncio.run(main())
+
 
