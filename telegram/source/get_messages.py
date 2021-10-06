@@ -339,7 +339,7 @@ class TelegramCollector():
         if self.save_kafka:
             topic = self.kafka.get_topic('telegram' , 'mensagem')
             json_dump_object = json.dumps(item)
-            self.kafka.publish_kafka_message(self.producer, topic, 'raw', json_dump_object)
+            self.kafka.publish_kafka_message(self.producer, topic, now, json_dump_object)
             
         if self.save_file:
             if self.write_mode == "file" or self.write_mode == "both":
@@ -406,7 +406,7 @@ class TelegramCollector():
         if self.save_kafka:
             topic = self.kafka.get_topic('telegram' , 'notificacao')
             json_dump_object = json.dumps(notification)
-            self.kafka.publish_kafka_message(self.producer, topic, 'raw', json_dump_object)
+            self.kafka.publish_kafka_message(self.producer, topic, now, json_dump_object)
 
     async def _run_unread_collector(self):
         

@@ -72,8 +72,8 @@ class KafkaManager():
             try:
                 key_bytes = bytes(key, encoding='utf-8')
                 value_bytes = bytes(value, encoding='utf-8')
-                #producer.send(topic_name, key=key_bytes, value=value_bytes)
-                producer.send(topic_name,  str.encode(value) )
+                producer.send(topic_name, key=key_bytes, value=value_bytes)
+                #producer.send(topic_name,  str.encode(value) )
                 producer.flush()
                 print('Messagem publicada no topico "%s" do Kafka com sucesso.' %(topic_name))
                 sent = True
