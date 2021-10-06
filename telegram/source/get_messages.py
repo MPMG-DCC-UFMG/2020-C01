@@ -245,7 +245,7 @@ class TelegramCollector():
         with open(path, 'a') as fmid:
             print(str(id), file=fmid)
 
-    async def _save_message(self, message, dialog_name, daily_path = "/data/mensagens/", group_path="/data/mensagens_grupo/"):
+    async def _save_message(self, message, dialog_name, now, daily_path = "/data/mensagens/", group_path="/data/mensagens_grupo/"):
         """
         Escreve em formato json a mensagem coletada no arquivo
         referente ao grupo em que ela foi enviada. Caso o arquivo do grupo
@@ -261,6 +261,7 @@ class TelegramCollector():
         #print(message) #log message
         
         item = dict()
+        item["idt_coleta"] = now
         try: 
             item["grupo_id"] = message.to_id.chat_id
         except:
@@ -357,7 +358,7 @@ class TelegramCollector():
                     json.dump(item, json_file)
                     print("", file=json_file)
     
-    def _save_notification(self, message, path='/data/notificacoes/'):
+    def _save_notification(self, message, now, path='/data/notificacoes/'):
         """
         Escreve em formato json a notificacao contida na mensagem no arquivo
         referente ao grupo em que ela foi enviada. Caso o arquivo do grupo
@@ -372,6 +373,7 @@ class TelegramCollector():
         """
         notification = dict()
 
+        notification["idt_coleta"] = now
         notification["identificador"] = message.id
         
         try: 
@@ -469,6 +471,9 @@ class TelegramCollector():
         start_date = utc.localize(datetime.datetime.strptime(self.start_date, "%Y-%m-%d"))
         end_date = utc.localize(datetime.datetime.strptime(self.end_date, "%Y-%m-%d"))
 
+        # Sets the id of the current collection
+        now = str(int(time.time()*1000))
+
         # Load previous saved messages
         previous_ids = self._get_load_messages()
 
@@ -526,10 +531,10 @@ class TelegramCollector():
                                     continue
 
                                 if (not message.action) and self.collect_messages:
-                                    await self._save_message(message, dialog.entity.title)
+                                    await self._save_message(message, dialog.entity.title, now)
                                     previous_ids.add(message.id)   
                                 elif message.action and self.collect_notifications:
-                                    self._save_notification(message)
+                                    self._save_notification(message, now)
                                     previous_ids.add(message.id)   
 
             self._save_processed_ids(previous_ids)
