@@ -316,7 +316,7 @@ class TelegramCollector():
                         if os.path.isfile(file_path): 
                             
                             item["arquivo"] = file_path.split("/")[-1]
-                            item["datalake"] = join( self.datalake, file_path.split("/")[-1])
+                            item["datalake"] = join(self.datalake, item["tipo"], item["criado_em"][0:+10], file_path.split("/")[-1])
 
                             if file_path != None and (
                                     (item["tipo"] == "image" and self.process_image_hashes) or 
