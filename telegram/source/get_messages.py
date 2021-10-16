@@ -305,10 +305,10 @@ class TelegramCollector():
                     (item["tipo"] == "audio" and self.collect_audios) or \
                     (item["tipo"] == "video" and self.collect_videos) or \
                     (item["tipo"] == "other" and self.collect_others):
-                path = os.path.join(base_path, message.date.strftime("%Y-%m-%d"))
+                path = os.path.join(base_path, now, message.date.strftime("%Y-%m-%d"))
                 pathlib.Path(path).mkdir(parents=True, exist_ok=True)
                 
-                path = os.path.join(base_path, message.date.strftime("%Y-%m-%d"), str(item["identificador"]))
+                path = os.path.join(base_path, now, message.date.strftime("%Y-%m-%d"), str(item["identificador"]))
                 try:
                     file_path = await message.download_media(path)
                     
@@ -316,7 +316,7 @@ class TelegramCollector():
                         if os.path.isfile(file_path): 
                             
                             item["arquivo"] = file_path.split("/")[-1]
-                            item["datalake"] = join(self.datalake, item["tipo"], item["criado_em"][0:+10], file_path.split("/")[-1])
+                            item["datalake"] = join(self.datalake, item["tipo"], now, item["criado_em"][0:+10], file_path.split("/")[-1])
 
                             if file_path != None and (
                                     (item["tipo"] == "image" and self.process_image_hashes) or 
